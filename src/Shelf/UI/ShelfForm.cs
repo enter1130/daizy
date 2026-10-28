@@ -22,6 +22,7 @@ sealed class ShelfForm : Form
     readonly TrayService _tray;
     readonly BubbleForm _bubble;
     readonly OutsideClickWatcher _outside = new();
+    readonly WinVHook _winV = new();
 
     readonly System.Windows.Forms.Timer _clock = new() { Interval = 60_000 };       // 更新「N 分鐘前」
     readonly System.Windows.Forms.Timer _messageTimer = new() { Interval = 3000 };  // 錯誤訊息顯示多久
@@ -122,6 +123,7 @@ sealed class ShelfForm : Form
         if (_settings.ShowBubble) _bubble.Show();
 
         _outside.ButtonDown += OnOutsideButtonDown;
+        _winV.Pressed += () => BeginInvoke(() => TogglePanel(keyboard: true, atBall: false));   // 同熱鍵
 
         _tray = new TrayService(
             toggle: () => { if (Environment.TickCount64 - _outsideClosedAt > 300) TogglePanel(keyboard: false, atBall: _bubble.Visible); },
@@ -160,6 +162,7 @@ sealed class ShelfForm : Form
         Native.DwmSetWindowAttribute(Handle, Native.DWMWA_WINDOW_CORNER_PREFERENCE, ref noRound, sizeof(int));
         _clipboard.Start(Handle);
         RegisterHotkey();
+        _winV.Enabled = _settings.ReplaceWinV;
     }
 
     protected override void OnHandleDestroyed(EventArgs e)
@@ -185,6 +188,7 @@ sealed class ShelfForm : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _outside.Dispose();
+        _winV.Dispose();
         _store.Dispose();   // 把還在 debounce 的異動寫進 index.json
         _frame.Close();
         _bubble.Close();
@@ -390,6 +394,16 @@ sealed class ShelfForm : Form
         _keyboardMode = true;
         SetNoActivate(false);
         Activate();   // 剛收到使用者的點擊或熱鍵，系統允許我們切到前景
+        if (Native.GetForegroundWindow() != Handle && fg != IntPtr.Zero)
+        {
+            // Win+V 是鍵盤 hook 攔到的，系統不把我們當成收到輸入的程式，會擋下切換前景；
+            // 暫時和前景視窗共用輸入狀態再切一次
+            uint mine = Native.GetCurrentThreadId(), theirs = Native.GetWindowThreadProcessId(fg, out _);
+            Native.AttachThreadInput(mine, theirs, true);
+            Native.SetForegroundWindow(Handle);
+            Activate();
+            Native.AttachThreadInput(mine, theirs, false);
+        }
     }
 
     /// 主動結束鍵盤模式並把焦點還給原本的視窗；不靠系統在 Hide 時自己挑下一個視窗，免得挑錯。
@@ -483,6 +497,7 @@ sealed class ShelfForm : Form
             _tray.Warn($"開機啟動設定失敗：{ex.Message}");
         }
         _store.Limit = s.Limit;
+        _winV.Enabled = s.ReplaceWinV;
         ApplyBubbleVisible();
         UpdatePaused();
         ApplyTheme();
@@ -565,7 +580,7 @@ sealed class ShelfForm : Form
         _list.SetItems(_view, animate);
 
         if (_store.Items.Count == 0)
-            _list.SetEmptyText("把檔案、文字或圖片拖到這裡", "按 Ctrl+C 複製的內容也會自動收進來", $"隨時按 {HotkeyText} 叫出這個架子");
+            _list.SetEmptyText("把檔案、文字或圖片拖到這裡", "按 Ctrl+C 複製的內容也會自動收進來", $"隨時按 {(_settings.ReplaceWinV ? "Win+V" : HotkeyText)} 叫出這個架子");
         else if (q.Length > 0)
             _list.SetEmptyText($"找不到「{q}」", "試試其他關鍵字");
         else if (_tabs.Searching)

@@ -18,6 +18,9 @@ sealed class Settings
     /// 顯示浮動球。預設關：熱鍵叫出、點一下直接貼上比較快（6.9）
     public bool ShowBubble { get; set; }
 
+    /// 按 Win+V 改開 Shelf，取代 Windows 的剪貼簿紀錄（6.10）
+    public bool ReplaceWinV { get; set; } = true;
+
     /// 浮動球左上角的螢幕座標（實體像素）。null 表示還沒拖過，用預設位置
     public int? BubbleX { get; set; }
     public int? BubbleY { get; set; }

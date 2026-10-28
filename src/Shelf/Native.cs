@@ -201,6 +201,13 @@ static class Native
     public const uint KEYEVENTF_KEYUP = 0x2;
 
     [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool attach);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
     public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extraInfo);
 
     // ── 剪貼簿 ──
