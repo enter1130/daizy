@@ -50,6 +50,7 @@ static class Theme
     public static readonly Font BodyStrong = new("Segoe UI Semibold", 10.5f);
     public static readonly Font Caption = new("Segoe UI", 9f);              // 12 px
     public static readonly Font CaptionStrong = new("Segoe UI Semibold", 9f);
+    public static readonly Font Label = new("Segoe UI", 8.25f);             // 11 px：分類膠囊圖示下的小字
     public static readonly Font Subtitle = new("Segoe UI Semibold", 15f);   // 20 px
 
     // ── 圖示字型：Windows 11 是 Segoe Fluent Icons，Windows 10 是 Segoe MDL2 Assets，碼位相同 ──

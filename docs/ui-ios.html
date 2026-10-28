@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 分離式分類列</title>
+<style>
+  :root{
+    --page:#e9e9e9; --panel:#f9f9f9; --border:#dcdcdc; --control:#fff; --control-stroke:#e5e5e5; --subtle:#ededed;
+    --text:#1a1a1a; --text2:#5f5f5f; --accent:#8e3fa8; --accent-soft:#f0e3f5;
+    --desk1:#cfd8e6; --desk2:#aebbd0; --win:#ffffff;
+    --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; --icons:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  }
+  :root.dark{
+    --page:#1a1a1a; --panel:#2c2c2c; --border:#404040; --control:#373737; --control-stroke:#454545; --subtle:#383838;
+    --text:#fff; --text2:#c5c5c5; --accent:#d9a3e6; --accent-soft:#4a3552;
+    --desk1:#2f3b52; --desk2:#141b2a; --win:#272727;
+  }
+  @media (prefers-color-scheme: dark){ :root:not(.light){
+    --page:#1a1a1a; --panel:#2c2c2c; --border:#404040; --control:#373737; --control-stroke:#454545; --subtle:#383838;
+    --text:#fff; --text2:#c5c5c5; --accent:#d9a3e6; --accent-soft:#4a3552;
+    --desk1:#2f3b52; --desk2:#141b2a; --win:#272727; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 16px 60px}
+  .wrap{max-width:1400px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:36px 0 6px}
+  p{color:var(--text2);margin:0 0 14px;max-width:920px}
+  .bar-btns{display:flex;gap:8px;margin:4px 0 18px;flex-wrap:wrap}
+  .btn{font:inherit;color:var(--text);background:var(--control);border:1px solid var(--control-stroke);border-radius:4px;padding:5px 14px;cursor:pointer}
+  .ic{font-family:var(--icons);font-style:normal;line-height:1}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:24px}
+  .cap{font-weight:600;margin:0 0 2px}
+  .sub{font-size:12.5px;color:var(--text2);margin:0 0 10px;min-height:38px}
+
+  /* 桌面：一個編輯器視窗，文字游標的位置就是面板的錨點 */
+  .desk{position:relative;width:420px;height:600px;max-width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,var(--desk1),var(--desk2))}
+  .desk .w{position:absolute;inset:20px 20px 52px 20px;background:var(--win);border-radius:8px;opacity:.8}
+  .desk .line{position:absolute;left:44px;font:15px var(--font);color:var(--text)}
+  .desk .caret{display:inline-block;width:1.5px;height:17px;background:var(--text);vertical-align:-3px;margin-left:2px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .desk .tb{position:absolute;left:0;right:0;bottom:0;height:36px;background:rgba(32,32,32,.85)}
+
+  .shelf{position:absolute;left:36px;width:340px;display:flex;flex-direction:column;gap:10px}
+  .shelf.up{flex-direction:column-reverse}
+
+  /* 第一部分：內容卡片 */
+  /* 陰影改成四周平均、短而淡，不往下拖：卡片在分類列上方時，陰影不會蓋到分類列 */
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:6px 0;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  .row{display:flex;align-items:center;gap:12px;margin:2px 6px;padding:8px 10px;border-radius:16px}
+  .row.hover{background:var(--subtle)}
+  .tile{width:36px;height:36px;border-radius:10px;background:var(--control);border:1px solid var(--control-stroke);display:grid;place-items:center;color:var(--text2);font-family:var(--icons);font-size:15px;flex:none;overflow:hidden}
+  .tile.img{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);border:0}
+  .tile.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c);border:0}
+  .tile.xls{color:#2e8b57}
+  .meta{flex:1;min-width:0}
+  .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+  .app{width:14px;height:14px;border-radius:3px;display:inline-block}
+  .app.code{background:#2f80ed}.app.folder{background:#f5c342}.app.snip{background:#7c5fd6}.app.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c)}
+  .acts{color:var(--text2);font-family:var(--icons);font-size:12px;letter-spacing:12px}
+  mark{background:var(--accent-soft);color:inherit;border-radius:2px;padding:0 1px}
+
+  /* 第二部分：分類膠囊 + 獨立的搜尋圓鈕（iOS 分頁列） */
+  .bar{display:flex;gap:8px;height:60px;position:relative;z-index:1}   /* 分類列永遠疊在卡片上面 */
+  .pill,.round{background:var(--panel);border:1px solid var(--border);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  .pill{flex:1;border-radius:30px;display:flex;align-items:center;padding:4px;gap:2px;transition:all .25s cubic-bezier(.2,.8,.2,1)}
+  .round{width:60px;flex:none;border-radius:50%;display:grid;place-items:center;color:var(--text2);transition:all .25s cubic-bezier(.2,.8,.2,1)}
+  .round .ic{font-size:18px}
+  .tab{flex:1;height:50px;border-radius:25px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text2)}
+  .tab .ic{font-size:17px}
+  .tab .lb{font-size:11px;line-height:1}
+  .tab.on{background:var(--accent-soft);color:var(--accent)}
+  .iconOnly .tab .lb{display:none}
+  .iconOnly .tab .ic{font-size:18px}
+
+  /* 搜尋中：分類膠囊縮成一顆圓鈕（顯示目前分類，點了回去），搜尋圓鈕展開成搜尋框 */
+  .sfield{flex:1;border-radius:30px;display:flex;align-items:center;gap:10px;padding:0 8px 0 18px;border-color:var(--accent)}
+  .sfield .ic{color:var(--text2)}
+  .sfield .q{flex:1}
+  .sfield .caret{display:inline-block;width:1px;height:16px;background:var(--text);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+  .clear{width:28px;height:28px;border-radius:50%;background:var(--subtle);display:grid;place-items:center;font-family:var(--icons);font-size:10px;color:var(--text2)}
+
+  .play .shelf > *{animation:pop .3s cubic-bezier(.2,.8,.2,1) both}
+  .play .shelf > .bar{animation-delay:.06s}
+  @keyframes pop{from{transform:translateY(-8px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+  .play .shelf.up > *{animation-name:popUp}
+  @keyframes popUp{from{transform:translateY(8px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+
+  .spec{font-size:13px;width:100%;border-collapse:collapse;margin-top:8px}
+  .spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--control-stroke);vertical-align:top}
+  .spec th{color:var(--text2);font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Shelf 分離式分類列</h1>
+  <p>面板拆成<b>兩個部分</b>：一張內容卡片，和一條 iOS 分頁列那樣的<b>分類膠囊</b>，旁邊再一顆<b>獨立的搜尋圓鈕</b>。卡片和分類列之間留 10 px 空隙，各自有圓角和陰影，像浮在桌面上。分類列放在靠近文字游標的那一邊，滑鼠移動最短。</p>
+  <div class="bar-btns">
+    <button class="btn" onclick="replay()">▶ 重播展開動畫</button>
+    <button class="btn" onclick="toggleTheme()">切換淺色 / 深色</button>
+  </div>
+
+  <h2>分類膠囊</h2>
+  <div class="grid" id="styles"></div>
+
+  <h2>點搜尋之後（同 iOS）</h2>
+  <div class="grid" id="search"></div>
+
+  <h2>游標太靠下、面板開在上方</h2>
+  <div class="grid" id="flip"></div>
+
+  <h2>規格</h2>
+  <table class="spec">
+    <tr><th>部件</th><th>規格（邏輯像素）</th></tr>
+    <tr><td>整體</td><td>寬 340，開在文字游標下方（放不下就上方），左緣對齊游標。卡片和分類列之間空 10</td></tr>
+    <tr><td>內容卡片</td><td>22 圓角、淡外框、陰影；高度跟著筆數。懸停列是 16 圓角淡底</td></tr>
+    <tr><td>分類膠囊</td><td>高 60、全圓（30）；四格平分，選中那格是淡強調色膠囊，切換時滑過去</td></tr>
+    <tr><td>搜尋圓鈕</td><td>60 × 60 正圓，和膠囊空 8</td></tr>
+    <tr><td>搜尋中</td><td>膠囊縮成 60 圓鈕（顯示目前分類圖示，點了回到分類）；搜尋鈕展開成搜尋框，內含 ✕ 清空。按熱鍵叫出時直接是這個狀態</td></tr>
+    <tr><td>位置在上方時</td><td>順序上下顛倒：卡片在上、分類列在下，分類列永遠靠近游標</td></tr>
+    <tr><td>陰影</td><td>四周平均（往下只偏 2）、模糊 10、淡；分類列疊在卡片上面。卡片和分類列空 10，和游標那一行也空 10</td></tr>
+  </table>
+</div>
+
+<script>
+  const rows = (q, n = 5) => {
+    const all = [
+      ['edge', '', '喚醒企業大腦_UTI.html', 'folder', '2 分鐘前', true],
+      ['', '&#xE8E4;', '本次驗收項目包含真空腔體、渦輪分子幫浦…', 'code', '2 分鐘前'],
+      ['img', '', '圖片 1920×1080', 'snip', '15 分鐘前'],
+      ['xls', '&#xE8A5;', '驗收清單_2026Q4.xlsx', 'folder', '昨天 16:20'],
+      ['', '&#xE8E4;', 'https://intranet.example.com/isms/IT437', 'edge', '昨天 09:12'],
+    ].slice(0, n).filter(r => !q || r[2].includes(q));
+    return all.map(([cls, glyph, t, app, when, hover]) => `
+      <div class="row ${hover && !q ? 'hover' : ''}"><div class="tile ${cls}">${glyph}</div>
+        <div class="meta"><div class="t">${q ? t.replace(q, `<mark>${q}</mark>`) : t}</div><div class="s"><i class="app ${app}"></i>${when}</div></div>
+        ${hover && !q ? '<span class="acts">&#xE718;&#xE74D;</span>' : ''}</div>`).join('');
+  };
+
+  const TABS = [['&#xE71D;', '全部'], ['&#xE8E4;', '文字'], ['&#xE91B;', '圖片'], ['&#xE8B7;', '檔案']];
+  const bar = (searching, iconOnly) => searching
+    ? `<div class="bar"><div class="round" title="回到分類"><i class="ic">&#xE71D;</i></div>
+         <div class="pill sfield"><i class="ic">&#xE721;</i><span class="q">驗收<span class="caret"></span></span><div class="clear">&#xE711;</div></div></div>`
+    : `<div class="bar ${iconOnly ? 'iconOnly' : ''}"><div class="pill">${TABS.map(([g, l], i) =>
+         `<div class="tab ${i === 0 ? 'on' : ''}"><i class="ic">${g}</i><span class="lb">${l}</span></div>`).join('')}</div>
+         <div class="round"><i class="ic">&#xE721;</i></div></div>`;
+
+  // 游標在第 lineY 行；面板開在游標下方（up = 開在上方）
+  function desk({ searching = false, iconOnly = true, up = false, n = 5 }) {
+    const lineY = up ? 520 : 52;
+    const q = searching ? '驗收' : '';
+    const pos = up ? `bottom:${600 - lineY + 10}px` : `top:${lineY + 32}px`;   // 和游標那一行留 10 px，不貼著字
+    return `<div class="desk"><div class="w"></div>
+      <div class="line" style="top:${lineY}px">驗收報告：<span class="caret"></span></div>
+      <div class="tb"></div>
+      <div class="shelf ${up ? 'up' : ''}" style="${pos}">
+        ${up ? '' : ''}${bar(searching, iconOnly)}
+        <div class="card">${rows(q, n)}</div>
+      </div></div>`;
+  }
+
+  const fig = (cap, sub, html) => `<div><div class="cap">${cap}</div><div class="sub">${sub}</div><div class="play-target">${html}</div></div>`;
+
+  document.getElementById('styles').innerHTML =
+    fig('開在下方（採用 B：只有圖示）', '分類列在上、靠近游標；滑鼠停住才顯示文字。', desk({})) +
+    fig('對照：A 圖示 + 文字', '未採用。', desk({ iconOnly: false }));
+  document.getElementById('search').innerHTML =
+    fig('搜尋中', '分類膠囊縮成左邊一顆圓鈕，搜尋鈕展開成搜尋框；清單只剩符合的項目、卡片跟著變矮。', desk({ searching: true }));
+  document.getElementById('flip').innerHTML =
+    fig('開在上方', '整組上下顛倒：分類列在下、靠近游標，卡片在上。陰影四周平均、短而淡，分類列疊在卡片上面，卡片的陰影不會蓋到分類列。', desk({ up: true, n: 4 }));
+
+  // 分類列放在卡片上方（靠近游標）：開在下方時順序是 分類列 → 卡片，開在上方時 column-reverse 變成 卡片 → 分類列
+  function replay() {
+    document.querySelectorAll('.play-target').forEach(el => { el.classList.remove('play'); void el.offsetWidth; el.classList.add('play'); });
+  }
+  function toggleTheme() {
+    const r = document.documentElement, dark = r.classList.contains('dark') ||
+      (!r.classList.contains('light') && matchMedia('(prefers-color-scheme: dark)').matches);
+    r.classList.toggle('dark', !dark); r.classList.toggle('light', dark);
+  }
+  if (location.hash !== '#static') replay();
+</script>
+</body>
+</html>

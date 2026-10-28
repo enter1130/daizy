@@ -2,90 +2,48 @@ using System.Drawing.Drawing2D;
 
 namespace Shelf.UI;
 
-/// 球在抽屜的哪個角（抽屜往相反方向展開）
-enum BallCorner { BottomRight, BottomLeft, TopRight, TopLeft }
-
-/// 融合抽屜的外形（設計稿 docs/ui-lshape.html）：
-/// 遠離分類列的兩角 22 px 圓角；分類列那一側離球最遠的角 28 px（分類列高度的一半，像膠囊的一端）；
-/// 球那一角沿「圓心 = 球心、半徑 = 球半徑 + 8」的圓挖出月牙凹口，兩個尖角修圓。
-///
-/// 一律先以「球在右下」的座標畫，再依實際角落翻轉。
-///
-/// 球心在分類列那一排的正中央：離抽屜的兩個邊各 RowHalf。凹口半徑 = 球半徑 + Gap。
+/// 面板的外形（設計稿 docs/ui-ios.html）：分成兩個部分，中間空開——
+/// 內容卡片（22 px 圓角），和一排 iOS 分頁列：分類膠囊 + 獨立的搜尋圓鈕。
+/// 搜尋中膠囊縮成左邊一顆圓鈕（回到分類），搜尋圓鈕展開成搜尋框。
+/// 分類列放在靠近游標（或球）的那一邊：barOnTop = 面板開在錨點下方。
 static class DrawerShape
 {
-    public const int TopRadius = 22, FootRadius = 28, RowHalf = 28, BallRadius = 24, Gap = 8;
-    const float TipRound = 6;   // 凹口尖角修圓的角度（度）
+    public const int CardRadius = 22, BarHeight = 60, Gap = 10, ButtonGap = 8;
 
-    /// 凹口佔掉分類列多寬（從抽屜邊緣量起）：分類列內容要讓開這段
-    public const int NotchReach = RowHalf + BallRadius + Gap;
+    /// 分類列（含和卡片之間的空隙）佔的高度
+    public const int BarBand = BarHeight + Gap;
 
-    /// inset：整個外形往內縮多少像素（內容視窗用，讓鋸齒邊落在外框的同色底上）。
-    /// notch = false：沒有球（熱鍵叫出），兩個分類列角都是膠囊端，不挖凹口
-    public static GraphicsPath Build(SizeF size, BallCorner corner, float scale, float inset = 0, bool notch = true)
+    /// 分類列那一排裡的兩塊：膠囊（搜尋中是搜尋框）和圓鈕（搜尋中在左邊）。座標相對於分類列那一排的左上
+    public static (Rectangle Pill, Rectangle Round) BarParts(int width, int barH, int buttonGap, bool searching) =>
+        searching
+            ? (new Rectangle(barH + buttonGap, 0, width - barH - buttonGap, barH), new Rectangle(0, 0, barH, barH))
+            : (new Rectangle(0, 0, width - barH - buttonGap, barH), new Rectangle(width - barH, 0, barH, barH));
+
+    /// 三塊各自是一個封閉圖形。inset：整個外形往內縮多少像素（內容視窗用，讓鋸齒邊落在外框的同色底上）
+    public static GraphicsPath Build(Size size, bool barOnTop, bool searching, float scale, float inset = 0)
     {
-        float w = size.Width, h = size.Height, d = inset;
-        float rTop = TopRadius * scale - d, rFoot = FootRadius * scale - d;
-        if (!notch) return Flip(Plain(w, h, d, rTop, rFoot), corner, w, h);
-        float off = RowHalf * scale, cut = (BallRadius + Gap) * scale + d;
-        float cx = w - off, cy = h - off;                                   // 球心
-        float horn = MathF.Sqrt(cut * cut - (off - d) * (off - d));        // 凹口和邊緣的交點離球心的距離
+        int w = size.Width, h = size.Height;
+        int barH = (int)(BarHeight * scale), band = (int)(BarBand * scale);
+        int barY = barOnTop ? 0 : h - barH;
+        var card = barOnTop ? new RectangleF(0, band, w, h - band) : new RectangleF(0, 0, w, h - band);
+        var (pill, round) = BarParts(w, barH, (int)(ButtonGap * scale), searching);
 
-        // 凹口兩端（修圓後）在圓上的角度
-        float aRight = Deg(MathF.Atan2(-horn, off - d)) - TipRound;         // 右緣那一端，往上
-        float aBottom = Deg(MathF.Atan2(off - d, -horn)) + TipRound;        // 底緣那一端，往左
-        var pRight = OnCircle(cx, cy, cut, aRight);
-        var pBottom = OnCircle(cx, cy, cut, aBottom);
-
-        var p = new GraphicsPath();
-        p.AddLine(d + rTop, d, w - d - rTop, d);
-        p.AddArc(w - d - 2 * rTop, d, 2 * rTop, 2 * rTop, -90, 90);                      // 右上
-        var rightTip = new PointF(w - d, cy - horn);
-        p.AddLine(w - d, d + rTop, w - d, rightTip.Y - 4 * scale);
-        AddQuad(p, new PointF(w - d, rightTip.Y - 4 * scale), rightTip, pRight);       // 修圓右邊的尖角
-        p.AddArc(cx - cut, cy - cut, 2 * cut, 2 * cut, aRight, (aBottom - 360) - aRight); // 凹口：逆時針繞過球的左上
-        var bottomTip = new PointF(cx - horn, h - d);
-        AddQuad(p, pBottom, bottomTip, new PointF(bottomTip.X - 4 * scale, h - d));    // 修圓底邊的尖角
-        p.AddLine(bottomTip.X - 4 * scale, h - d, d + rFoot, h - d);
-        p.AddArc(d, h - d - 2 * rFoot, 2 * rFoot, 2 * rFoot, 90, 90);                    // 左下（膠囊端）
-        p.AddLine(d, h - d - rFoot, d, d + rTop);
-        p.AddArc(d, d, 2 * rTop, 2 * rTop, 180, 90);                                     // 左上
-        p.CloseFigure();
-        return Flip(p, corner, w, h);
-    }
-
-    /// 沒有凹口：上面兩角 rTop、下面（分類列）兩角 rFoot
-    static GraphicsPath Plain(float w, float h, float d, float rTop, float rFoot)
-    {
-        var p = new GraphicsPath();
-        p.AddArc(d, d, 2 * rTop, 2 * rTop, 180, 90);
-        p.AddArc(w - d - 2 * rTop, d, 2 * rTop, 2 * rTop, 270, 90);
-        p.AddArc(w - d - 2 * rFoot, h - d - 2 * rFoot, 2 * rFoot, 2 * rFoot, 0, 90);
-        p.AddArc(d, h - d - 2 * rFoot, 2 * rFoot, 2 * rFoot, 90, 90);
-        p.CloseFigure();
+        var p = new GraphicsPath(FillMode.Winding);
+        AddRounded(p, card, CardRadius * scale, inset);
+        AddRounded(p, pill with { Y = barY }, barH / 2f, inset);
+        AddRounded(p, round with { Y = barY }, barH / 2f, inset);
         return p;
     }
 
-    /// 以「球在右下」畫好的外形翻到實際的角落
-    static GraphicsPath Flip(GraphicsPath p, BallCorner corner, float w, float h)
+    static void AddRounded(GraphicsPath p, RectangleF r, float radius, float inset)
     {
-        bool flipX = corner is BallCorner.BottomLeft or BallCorner.TopLeft;
-        bool flipY = corner is BallCorner.TopRight or BallCorner.TopLeft;
-        if (flipX || flipY)
-            using (var m = new Matrix(flipX ? -1 : 1, 0, 0, flipY ? -1 : 1, flipX ? w : 0, flipY ? h : 0))
-                p.Transform(m);
-        return p;
+        r.Inflate(-inset, -inset);
+        float d = Math.Min(2 * (radius - inset), Math.Min(r.Width, r.Height));
+        p.StartFigure();
+        p.AddArc(r.Left, r.Top, d, d, 180, 90);
+        p.AddArc(r.Right - d, r.Top, d, d, 270, 90);
+        p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        p.AddArc(r.Left, r.Bottom - d, d, d, 90, 90);
+        p.CloseFigure();
     }
-
-    static float Deg(float rad) => rad * 180 / MathF.PI;
-
-    static PointF OnCircle(float cx, float cy, float r, float deg) =>
-        new(cx + r * MathF.Cos(deg * MathF.PI / 180), cy + r * MathF.Sin(deg * MathF.PI / 180));
-
-    /// GraphicsPath 沒有二次貝茲曲線，換算成三次的
-    static void AddQuad(GraphicsPath p, PointF p0, PointF q, PointF p2) =>
-        p.AddBezier(p0,
-            new PointF(p0.X + 2f / 3 * (q.X - p0.X), p0.Y + 2f / 3 * (q.Y - p0.Y)),
-            new PointF(p2.X + 2f / 3 * (q.X - p2.X), p2.Y + 2f / 3 * (q.Y - p2.Y)),
-            p2);
 }

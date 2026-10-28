@@ -32,8 +32,8 @@ sealed class ShelfForm : Form
     bool _showing;             // 面板的目標狀態；動畫進行中 Visible 仍是 true，判斷「開著沒」一律看這個
     float _shown;              // 動畫進度：0 = 隱藏，1 = 完全顯示
     Rectangle _rest;           // Place() 算出的抽屜位置
-    BallCorner _corner;        // 球在抽屜的哪個角
-    bool _atBall, _notch;      // 這次是不是從球展開（有月牙凹口）；否則開在文字游標或滑鼠旁（6.9）
+    bool _barOnTop;            // 面板開在錨點下方：分類列在上（靠近錨點）
+    bool _atBall;              // 這次是不是從球展開；否則開在文字游標或滑鼠旁（6.9）
     Rectangle _anchor;         // 不從球展開時的錨點：文字游標，拿不到就用滑鼠位置
     readonly DrawerFrame _frame = new();   // 抽屜的外框層（平滑外形、外框線、陰影），在內容視窗正後方
 
@@ -87,6 +87,11 @@ sealed class ShelfForm : Form
         _tabs.Changed += () => RefreshList(animate: false);
         _tabs.SearchRequested += () => { EnterKeyboardMode(); _tabs.BeginSearch(); RefreshList(animate: false); };
         _tabs.SearchClosed += CloseSearch;
+        _tabs.ShapeChanged += () =>
+        {
+            ApplyShape();   // 膠囊和圓鈕換位置
+            if (Visible) ApplyPanelFrame();
+        };
         _tabs.ActivationNeeded += EnterKeyboardMode;
         _tabs.Input.TextChanged += (_, _) => { _list.ClearSelection(); RefreshList(animate: false); };
         _tabs.Input.KeyDown += OnSearchKeyDown;
@@ -282,16 +287,14 @@ sealed class ShelfForm : Form
         }
     }
 
-    /// 依動畫進度設位置與透明度：從球的方向斜斜滑出 12 px，同時淡入。
+    /// 依動畫進度設位置與透明度：從錨點（游標或球）那一側滑出 12 px，同時淡入。
     /// 外框層、內容層、球三個一起動，Z 順序由下往上：外框 → 內容 → 球
     void ApplyPanelFrame()
     {
         if (!IsHandleCreated) return;
         float e = Anim.Ease(_shown);
         int off = (int)((1 - e) * L(12));
-        int dx = !_atBall ? 0 : _corner is BallCorner.BottomRight or BallCorner.TopRight ? off : -off;
-        int dy = _corner is BallCorner.BottomRight or BallCorner.BottomLeft ? off : -off;
-        var r = _rest with { X = _rest.X + dx, Y = _rest.Y + dy };
+        var r = _rest with { Y = _rest.Y + (_barOnTop ? -off : off) };
         byte alpha = (byte)(e * 255);
 
         _frame.Present(r, alpha);
@@ -306,60 +309,35 @@ sealed class ShelfForm : Form
     void OnOutsideButtonDown(Point p)
     {
         if (!_showing || _pinOpen || _busy > 0 || _dragging) return;
-        if (Bounds.Contains(p) || (_bubble.Visible && _bubble.Bounds.Contains(p))) return;   // 點球交給球自己的 Clicked 處理
+        // 卡片和分類列之間的縫在 Region 之外，點那裡等於點外面
+        bool onPanel = Bounds.Contains(p) && (Region?.IsVisible(p.X - Left, p.Y - Top) ?? true);
+        if (onPanel || (_bubble.Visible && _bubble.Bounds.Contains(p))) return;   // 點球交給球自己的 Clicked 處理
         _outsideClosedAt = Environment.TickCount64;
         BeginInvoke(Dismiss);   // hook 回呼要快速返回，收起的動作排到訊息迴圈去做
     }
 
-    /// 融合抽屜（設計稿 docs/ui-lshape.html）：球嵌在抽屜的一個角，球心在分類列那一排的正中央。
-    /// 球在螢幕右半邊就往左展開，下半邊就往上展開（分類列在底部、和球同一排）；上面放不下才往下開（分類列改到頂部）。
+    /// 開在錨點旁（設計稿 docs/ui-ios.html），同 Win+V：下面放得下就開在下方，分類列在靠錨點的那一邊；放不下就開在上方。
+    /// 錨點是文字游標（或滑鼠）時左緣對齊它；是球時對齊球靠螢幕外側的那一邊、往中間長。超出螢幕就往內推。
     /// 高度跟著筆數：剛好放得下全部項目，最少 200 px（空狀態），最多工作區 70%；用總筆數算，搜尋時不伸縮。
     void Place()
     {
         if (!IsHandleCreated) return;
-        if (!_atBall) { PlaceAtAnchor(); return; }
-        var ball = _bubble.Bounds;
-        var c = new Point(ball.Left + ball.Width / 2, ball.Top + ball.Height / 2);   // 球心
-        var work = Screen.FromRectangle(ball).WorkingArea;
-        int half = L(DrawerShape.RowHalf), w = L(340), min = L(200);
+        var anchor = _atBall ? _bubble.Bounds : _anchor;
+        var work = Screen.FromRectangle(anchor).WorkingArea;
+        int gap = L(10), edge = L(8), w = L(340), min = L(200);
         int want = Math.Clamp(_tabs.Height + _store.Items.Count * L(56) + L(16), min, (int)(work.Height * 0.7));
 
-        int above = c.Y + half - work.Top, below = work.Bottom - (c.Y - half);
-        bool up = above >= want || above >= below;
-        bool right = c.X > work.Left + work.Width / 2;
-        int h = Math.Max(min, Math.Min(want, up ? above : below));
-        var corner = (up, right) switch
-        {
-            (true, true) => BallCorner.BottomRight,
-            (true, false) => BallCorner.BottomLeft,
-            (false, true) => BallCorner.TopRight,
-            _ => BallCorner.TopLeft,
-        };
-
-        var rect = new Rectangle(right ? c.X + half - w : c.X - half, up ? c.Y + half - h : c.Y - half, w, h);
-        SetRest(rect, corner, notch: true);
-    }
-
-    /// 開在錨點（文字游標或滑鼠）旁，同 Win+V：下面放得下就開在下方，分類列在靠錨點的那一邊；
-    /// 左緣對齊錨點，超出螢幕就往內推。沒有球，所以不挖凹口
-    void PlaceAtAnchor()
-    {
-        var work = Screen.FromRectangle(_anchor).WorkingArea;
-        int gap = L(6), edge = L(8), w = L(340), min = L(200);
-        int want = Math.Clamp(_tabs.Height + _store.Items.Count * L(56) + L(16), min, (int)(work.Height * 0.7));
-
-        int below = work.Bottom - edge - (_anchor.Bottom + gap), above = _anchor.Top - gap - (work.Top + edge);
+        int below = work.Bottom - edge - (anchor.Bottom + gap), above = anchor.Top - gap - (work.Top + edge);
         bool down = below >= want || below >= above;
         int h = Math.Max(min, Math.Min(want, down ? below : above));
-        int x = Math.Clamp(_anchor.Left - L(12), work.Left + edge, work.Right - edge - w);
-        int y = Math.Clamp(down ? _anchor.Bottom + gap : _anchor.Top - gap - h, work.Top + edge, work.Bottom - edge - h);
-        SetRest(new Rectangle(x, y, w, h), down ? BallCorner.TopLeft : BallCorner.BottomLeft, notch: false);
-    }
+        int x = !_atBall ? anchor.Left - L(12)
+            : anchor.Left + anchor.Width / 2 > work.Left + work.Width / 2 ? anchor.Right - w : anchor.Left;
+        x = Math.Clamp(x, work.Left + edge, work.Right - edge - w);
+        int y = Math.Clamp(down ? anchor.Bottom + gap : anchor.Top - gap - h, work.Top + edge, work.Bottom - edge - h);
 
-    void SetRest(Rectangle rect, BallCorner corner, bool notch)
-    {
-        bool reshape = rect.Size != _rest.Size || corner != _corner || notch != _notch;
-        (_rest, _corner, _notch) = (rect, corner, notch);
+        var rect = new Rectangle(x, y, w, h);
+        bool reshape = rect.Size != _rest.Size || down != _barOnTop;
+        (_rest, _barOnTop) = (rect, down);
         if (reshape) ApplyShape();
         if (Visible) ApplyPanelFrame();
     }
@@ -384,22 +362,21 @@ sealed class ShelfForm : Form
         return new Rectangle(Cursor.Position, new Size(1, 1));
     }
 
-    /// 大小或角落改變時：內容層裁成往內縮 1.5 px 的抽屜形狀、外框層重畫、分類列換到球那一排並讓開凹口
+    /// 大小、分類列位置、搜尋狀態改變時：內容層裁成往內縮 1.5 px 的外形（卡片 + 膠囊 + 圓鈕，中間的縫點得穿）、外框層重畫
     void ApplyShape()
     {
-        using (var path = DrawerShape.Build(_rest.Size, _corner, DeviceDpi / 96f, inset: 1.5f, notch: _notch))
+        if (_rest.IsEmpty) return;
+        using (var path = DrawerShape.Build(_rest.Size, _barOnTop, _tabs.Searching, DeviceDpi / 96f, inset: 1.5f))
         {
             var old = Region;
             Region = new Region(path);
             old?.Dispose();
         }
-        _frame.SetShape(_rest.Size, _corner, _notch);
+        _frame.SetShape(_rest.Size, _barOnTop, _tabs.Searching);
 
-        bool bottom = _corner is BallCorner.BottomRight or BallCorner.BottomLeft;
-        _tabs.Dock = bottom ? DockStyle.Bottom : DockStyle.Top;
-        _message.Dock = bottom ? DockStyle.Top : DockStyle.Bottom;
-        _tabs.SetNotch(onLeft: _corner is BallCorner.BottomLeft or BallCorner.TopLeft,
-            reserve: _notch ? L(DrawerShape.NotchReach) : 0, separatorOnTop: bottom);
+        _tabs.Dock = _barOnTop ? DockStyle.Top : DockStyle.Bottom;
+        _message.Dock = _barOnTop ? DockStyle.Bottom : DockStyle.Top;
+        _tabs.SetBarOnTop(_barOnTop);
     }
 
     // ── 鍵盤模式（6.1）──
@@ -550,7 +527,7 @@ sealed class ShelfForm : Form
         }
         if (!_rest.IsEmpty)
         {
-            _frame.SetShape(_rest.Size, _corner, _notch);   // 外框層的底色、外框線跟著主題
+            _frame.SetShape(_rest.Size, _barOnTop, _tabs.Searching);   // 外框層的底色、外框線跟著主題
             if (Visible) ApplyPanelFrame();
         }
         Invalidate(invalidateChildren: true);

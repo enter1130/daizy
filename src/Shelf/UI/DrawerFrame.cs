@@ -3,9 +3,9 @@ using System.Drawing.Imaging;
 
 namespace Shelf.UI;
 
-/// 抽屜的外框層：在內容視窗正後方，畫平滑的外形（含月牙凹口）、外框線與陰影。
+/// 面板的外框層：在內容視窗正後方，畫平滑的外形（卡片 + 分類膠囊 + 圓鈕）、外框線與陰影。
 ///
-/// 為什麼分兩層：月牙凹口和 22 px 圓角要平滑，只能用分層視窗逐像素畫（UpdateLayeredWindow）；
+/// 為什麼分兩層：圓角要平滑，只能用分層視窗逐像素畫（UpdateLayeredWindow）；
 /// 但那種視窗畫不出子控制項（搜尋框）。所以外框自己一層，內容視窗疊在上面、用 Region 裁成往內縮 1.5 px 的同一個形狀——
 /// Region 的鋸齒邊剛好落在外框的同色底上，看不出來。
 /// 外框帶 WS_EX_TRANSPARENT：滑鼠直接穿透，點陰影等於點到後面的視窗。
@@ -39,7 +39,7 @@ sealed class DrawerFrame : Form
     int M => LogicalToDeviceUnits(ShadowMargin);
 
     /// 依抽屜大小與球的角落重畫外框（大小或主題改變時呼叫）
-    public void SetShape(Size size, BallCorner corner, bool notch)
+    public void SetShape(Size size, bool barOnTop, bool searching)
     {
         int m = M;
         _bitmap?.Dispose();
@@ -48,13 +48,14 @@ sealed class DrawerFrame : Form
         using var g = Graphics.FromImage(_bitmap);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TranslateTransform(m, m);
-        using var path = DrawerShape.Build(size, corner, scale, notch: notch);
+        using var path = DrawerShape.Build(size, barOnTop, searching, scale);
 
-        // 柔和陰影：同一個外形往下偏一點，用由粗到細、很淡的黑色描邊疊出模糊感
+        // 柔和陰影：四周平均、只往下偏 2 px、短而淡（由粗到細的淡黑描邊疊出模糊感）。
+        // 所有陰影先畫完才填底色，所以卡片的陰影不會蓋到分類列，反之亦然
         var shadowState = g.Save();
-        g.TranslateTransform(0, 6 * scale);
-        for (int i = 10; i >= 1; i--)
-            using (var pen = new Pen(Color.FromArgb(5, 0, 0, 0), i * 2.4f * scale) { LineJoin = LineJoin.Round })
+        g.TranslateTransform(0, 2 * scale);
+        for (int i = 8; i >= 1; i--)
+            using (var pen = new Pen(Color.FromArgb(6, 0, 0, 0), i * 1.4f * scale) { LineJoin = LineJoin.Round })
                 g.DrawPath(pen, path);
         g.Restore(shadowState);
 
