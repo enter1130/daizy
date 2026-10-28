@@ -9,7 +9,7 @@ sealed class SettingsForm : Form
     static readonly int[] Limits = [100, 200, 500, 1000];
 
     readonly Settings _s;
-    readonly ToggleSwitch _autoStart, _collect;
+    readonly ToggleSwitch _autoStart, _collect, _bubble;
     readonly HotkeyBox _hotkey;
     readonly Segmented _theme, _limit;
     readonly FlowLayoutPanel _body;
@@ -39,6 +39,7 @@ sealed class SettingsForm : Form
         Card("開機時自動啟動", null, _autoStart = new ToggleSwitch { Checked = settings.AutoStart });
         _hotkey = new HotkeyBox(settings.HotkeyModifiers, settings.HotkeyKey);
         Card("呼叫熱鍵", "點一下後直接按下新的組合鍵", new InputBox(_hotkey) { Width = L(170) });
+        Card("顯示浮動球", "關閉時用熱鍵或系統匣圖示叫出", _bubble = new ToggleSwitch { Checked = settings.ShowBubble });
         Card("外觀", null, _theme = new Segmented("跟隨系統", "淺色", "深色") { SelectedIndex = (int)settings.Theme });
 
         Section("收集");
@@ -97,6 +98,7 @@ sealed class SettingsForm : Form
         _s.HotkeyKey = _hotkey.Key;
         _s.Theme = (ThemeMode)_theme.SelectedIndex;
         _s.CollectClipboard = _collect.Checked;
+        _s.ShowBubble = _bubble.Checked;
         _s.Limit = Limits[_limit.SelectedIndex];
         DialogResult = DialogResult.OK;
     }

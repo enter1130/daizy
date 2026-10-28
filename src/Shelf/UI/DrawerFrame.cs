@@ -39,7 +39,7 @@ sealed class DrawerFrame : Form
     int M => LogicalToDeviceUnits(ShadowMargin);
 
     /// 依抽屜大小與球的角落重畫外框（大小或主題改變時呼叫）
-    public void SetShape(Size size, BallCorner corner)
+    public void SetShape(Size size, BallCorner corner, bool notch)
     {
         int m = M;
         _bitmap?.Dispose();
@@ -48,7 +48,7 @@ sealed class DrawerFrame : Form
         using var g = Graphics.FromImage(_bitmap);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TranslateTransform(m, m);
-        using var path = DrawerShape.Build(size, corner, scale);
+        using var path = DrawerShape.Build(size, corner, scale, notch: notch);
 
         // 柔和陰影：同一個外形往下偏一點，用由粗到細、很淡的黑色描邊疊出模糊感
         var shadowState = g.Save();

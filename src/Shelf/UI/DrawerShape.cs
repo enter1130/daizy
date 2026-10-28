@@ -20,11 +20,13 @@ static class DrawerShape
     /// 凹口佔掉分類列多寬（從抽屜邊緣量起）：分類列內容要讓開這段
     public const int NotchReach = RowHalf + BallRadius + Gap;
 
-    /// inset：整個外形往內縮多少像素（內容視窗用，讓鋸齒邊落在外框的同色底上）
-    public static GraphicsPath Build(SizeF size, BallCorner corner, float scale, float inset = 0)
+    /// inset：整個外形往內縮多少像素（內容視窗用，讓鋸齒邊落在外框的同色底上）。
+    /// notch = false：沒有球（熱鍵叫出），兩個分類列角都是膠囊端，不挖凹口
+    public static GraphicsPath Build(SizeF size, BallCorner corner, float scale, float inset = 0, bool notch = true)
     {
         float w = size.Width, h = size.Height, d = inset;
         float rTop = TopRadius * scale - d, rFoot = FootRadius * scale - d;
+        if (!notch) return Flip(Plain(w, h, d, rTop, rFoot), corner, w, h);
         float off = RowHalf * scale, cut = (BallRadius + Gap) * scale + d;
         float cx = w - off, cy = h - off;                                   // 球心
         float horn = MathF.Sqrt(cut * cut - (off - d) * (off - d));        // 凹口和邊緣的交點離球心的距離
@@ -49,8 +51,24 @@ static class DrawerShape
         p.AddLine(d, h - d - rFoot, d, d + rTop);
         p.AddArc(d, d, 2 * rTop, 2 * rTop, 180, 90);                                     // 左上
         p.CloseFigure();
+        return Flip(p, corner, w, h);
+    }
 
-        // 翻到實際的角落
+    /// 沒有凹口：上面兩角 rTop、下面（分類列）兩角 rFoot
+    static GraphicsPath Plain(float w, float h, float d, float rTop, float rFoot)
+    {
+        var p = new GraphicsPath();
+        p.AddArc(d, d, 2 * rTop, 2 * rTop, 180, 90);
+        p.AddArc(w - d - 2 * rTop, d, 2 * rTop, 2 * rTop, 270, 90);
+        p.AddArc(w - d - 2 * rFoot, h - d - 2 * rFoot, 2 * rFoot, 2 * rFoot, 0, 90);
+        p.AddArc(d, h - d - 2 * rFoot, 2 * rFoot, 2 * rFoot, 90, 90);
+        p.CloseFigure();
+        return p;
+    }
+
+    /// 以「球在右下」畫好的外形翻到實際的角落
+    static GraphicsPath Flip(GraphicsPath p, BallCorner corner, float w, float h)
+    {
         bool flipX = corner is BallCorner.BottomLeft or BallCorner.TopLeft;
         bool flipY = corner is BallCorner.TopRight or BallCorner.TopLeft;
         if (flipX || flipY)

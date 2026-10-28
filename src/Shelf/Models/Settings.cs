@@ -15,6 +15,9 @@ sealed class Settings
     public bool CollectClipboard { get; set; } = true;
     public int Limit { get; set; } = 200;
 
+    /// 顯示浮動球。預設關：熱鍵叫出、點一下直接貼上比較快（6.9）
+    public bool ShowBubble { get; set; }
+
     /// 浮動球左上角的螢幕座標（實體像素）。null 表示還沒拖過，用預設位置
     public int? BubbleX { get; set; }
     public int? BubbleY { get; set; }

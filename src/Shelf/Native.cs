@@ -175,6 +175,34 @@ static class Native
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     static extern int RegisterWindowMessage(string lpString);
 
+    // ── 點一下就貼上（6.9）──
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GUITHREADINFO
+    {
+        public int cbSize, flags;
+        public IntPtr hwndActive, hwndFocus, hwndCapture, hwndMenuOwner, hwndMoveSize, hwndCaret;
+        public RECT rcCaret;
+    }
+
+    /// 取前景程式的文字游標（caret）位置；Chrome、VS Code 等自繪的程式可能拿不到
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetGUIThreadInfo(uint threadId, ref GUITHREADINFO info);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
+
+    public const byte VK_CONTROL = 0x11, VK_V = 0x56;
+    public const uint KEYEVENTF_KEYUP = 0x2;
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extraInfo);
+
     // ── 剪貼簿 ──
 
     [DllImport("user32.dll", SetLastError = true)]

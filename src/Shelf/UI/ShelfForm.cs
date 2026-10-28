@@ -33,7 +33,13 @@ sealed class ShelfForm : Form
     float _shown;              // 動畫進度：0 = 隱藏，1 = 完全顯示
     Rectangle _rest;           // Place() 算出的抽屜位置
     BallCorner _corner;        // 球在抽屜的哪個角
+    bool _atBall, _notch;      // 這次是不是從球展開（有月牙凹口）；否則開在文字游標或滑鼠旁（6.9）
+    Rectangle _anchor;         // 不從球展開時的錨點：文字游標，拿不到就用滑鼠位置
     readonly DrawerFrame _frame = new();   // 抽屜的外框層（平滑外形、外框線、陰影），在內容視窗正後方
+
+    readonly System.Windows.Forms.Timer _pasteTimer = new() { Interval = 30 };   // 等焦點回到原程式、放開按鍵才送 Ctrl+V
+    IntPtr _pasteTarget;
+    long _pasteDeadline;
 
     bool _allowShow;           // 啟動時不顯示面板，只顯示球
     bool _keyboardMode, _dragging, _trayPaused;
@@ -68,7 +74,7 @@ sealed class ShelfForm : Form
         _list.DragDrop += OnDragDrop;
 
         // 使用與管理
-        _list.ItemClicked += item => CopyItem(item);
+        _list.ItemClicked += PasteItem;
         _list.ItemDragStarted += DragItem;
         _list.ItemRightClicked += ShowItemMenu;
         _list.ActionClicked += (item, action) =>
@@ -92,12 +98,13 @@ sealed class ShelfForm : Form
         };
         _messageTimer.Tick += (_, _) => { _messageTimer.Stop(); _message.Visible = false; };
         _panelTimer.Tick += (_, _) => AnimatePanel();
+        _pasteTimer.Tick += (_, _) => TrySendPaste();
         _clock.Tick += (_, _) => { if (Visible) _list.Invalidate(); };
         _clock.Start();
 
         // 浮動球
         _bubble = new BubbleForm(CanAccept);
-        _bubble.Clicked += () => TogglePanel(keyboard: false);
+        _bubble.Clicked += () => TogglePanel(keyboard: false, atBall: true);
         _bubble.RightClicked += ShowBallMenu;
         _bubble.DragStarted += Dismiss;   // 拖球時面板先收起，不要留在原地
         _bubble.Moved += p =>
@@ -107,12 +114,12 @@ sealed class ShelfForm : Form
         };
         _bubble.Dropped += async data => await AddAsync(ItemFactory.Capture(data, preferImage: true, null, _store));
         _bubble.PlaceAt(_settings.BubbleX is int bx && _settings.BubbleY is int by ? new Point(bx, by) : null);
-        _bubble.Show();
+        if (_settings.ShowBubble) _bubble.Show();
 
         _outside.ButtonDown += OnOutsideButtonDown;
 
         _tray = new TrayService(
-            toggle: () => { if (Environment.TickCount64 - _outsideClosedAt > 300) TogglePanel(keyboard: false); },
+            toggle: () => { if (Environment.TickCount64 - _outsideClosedAt > 300) TogglePanel(keyboard: false, atBall: _bubble.Visible); },
             populateMenu: items => PopulateAppMenu(items, forTray: true));
 
         ApplyTheme();
@@ -183,8 +190,8 @@ sealed class ShelfForm : Form
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == Native.WM_CLIPBOARDUPDATE) OnClipboardUpdate();
-        else if (m.Msg == Native.WM_HOTKEY && m.WParam == HotkeyService.Id) TogglePanel(keyboard: true);
-        else if (m.Msg == Native.WM_SHELF_SHOW) Expand(keyboard: false);
+        else if (m.Msg == Native.WM_HOTKEY && m.WParam == HotkeyService.Id) TogglePanel(keyboard: true, atBall: false);
+        else if (m.Msg == Native.WM_SHELF_SHOW) Expand(keyboard: false, atBall: _bubble.Visible);
         else if (m.Msg == Native.WM_SETTINGCHANGE)
         {
             // 系統切換深淺色或強調色（就算外觀固定淺色 / 深色，強調色仍跟系統走）
@@ -201,15 +208,21 @@ sealed class ShelfForm : Form
 
     // ── 展開 / 收起（6.7）──
 
-    void TogglePanel(bool keyboard)
+    void TogglePanel(bool keyboard, bool atBall)
     {
         if (_showing) Dismiss();
-        else Expand(keyboard);
+        else Expand(keyboard, atBall);
     }
 
-    /// 在球旁邊展開（淡入並從球的方向滑出）。keyboard：熱鍵叫出時直接把焦點放到搜尋框
-    void Expand(bool keyboard)
+    /// 展開（淡入並滑出）。atBall：從球長出來；否則開在文字游標旁（同 Win+V），拿不到游標就開在滑鼠旁。
+    /// keyboard：熱鍵叫出時直接把焦點放到搜尋框
+    void Expand(bool keyboard, bool atBall)
     {
+        if (!_showing)
+        {
+            _atBall = atBall && _bubble.Visible;
+            if (!_atBall) _anchor = CaretOrCursor();
+        }
         Place();
         if (!_showing)
         {
@@ -276,7 +289,7 @@ sealed class ShelfForm : Form
         if (!IsHandleCreated) return;
         float e = Anim.Ease(_shown);
         int off = (int)((1 - e) * L(12));
-        int dx = _corner is BallCorner.BottomRight or BallCorner.TopRight ? off : -off;
+        int dx = !_atBall ? 0 : _corner is BallCorner.BottomRight or BallCorner.TopRight ? off : -off;
         int dy = _corner is BallCorner.BottomRight or BallCorner.BottomLeft ? off : -off;
         var r = _rest with { X = _rest.X + dx, Y = _rest.Y + dy };
         byte alpha = (byte)(e * 255);
@@ -286,14 +299,14 @@ sealed class ShelfForm : Form
         Native.SetWindowPos(_frame.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, keep);
         Native.SetWindowPos(Handle, Native.HWND_TOPMOST, r.X, r.Y, r.Width, r.Height, Native.SWP_NOACTIVATE);
         Native.SetLayeredWindowAttributes(Handle, 0, alpha, Native.LWA_ALPHA);
-        Native.SetWindowPos(_bubble.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, keep);
+        if (_bubble.Visible) Native.SetWindowPos(_bubble.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, keep);
     }
 
     /// 點到面板和球以外的地方就收起；選單、對話框開著或釘住視窗時不收
     void OnOutsideButtonDown(Point p)
     {
         if (!_showing || _pinOpen || _busy > 0 || _dragging) return;
-        if (Bounds.Contains(p) || _bubble.Bounds.Contains(p)) return;   // 點球交給球自己的 Clicked 處理
+        if (Bounds.Contains(p) || (_bubble.Visible && _bubble.Bounds.Contains(p))) return;   // 點球交給球自己的 Clicked 處理
         _outsideClosedAt = Environment.TickCount64;
         BeginInvoke(Dismiss);   // hook 回呼要快速返回，收起的動作排到訊息迴圈去做
     }
@@ -304,6 +317,7 @@ sealed class ShelfForm : Form
     void Place()
     {
         if (!IsHandleCreated) return;
+        if (!_atBall) { PlaceAtAnchor(); return; }
         var ball = _bubble.Bounds;
         var c = new Point(ball.Left + ball.Width / 2, ball.Top + ball.Height / 2);   // 球心
         var work = Screen.FromRectangle(ball).WorkingArea;
@@ -323,28 +337,69 @@ sealed class ShelfForm : Form
         };
 
         var rect = new Rectangle(right ? c.X + half - w : c.X - half, up ? c.Y + half - h : c.Y - half, w, h);
-        bool reshape = rect.Size != _rest.Size || corner != _corner;
-        (_rest, _corner) = (rect, corner);
+        SetRest(rect, corner, notch: true);
+    }
+
+    /// 開在錨點（文字游標或滑鼠）旁，同 Win+V：下面放得下就開在下方，分類列在靠錨點的那一邊；
+    /// 左緣對齊錨點，超出螢幕就往內推。沒有球，所以不挖凹口
+    void PlaceAtAnchor()
+    {
+        var work = Screen.FromRectangle(_anchor).WorkingArea;
+        int gap = L(6), edge = L(8), w = L(340), min = L(200);
+        int want = Math.Clamp(_tabs.Height + _store.Items.Count * L(56) + L(16), min, (int)(work.Height * 0.7));
+
+        int below = work.Bottom - edge - (_anchor.Bottom + gap), above = _anchor.Top - gap - (work.Top + edge);
+        bool down = below >= want || below >= above;
+        int h = Math.Max(min, Math.Min(want, down ? below : above));
+        int x = Math.Clamp(_anchor.Left - L(12), work.Left + edge, work.Right - edge - w);
+        int y = Math.Clamp(down ? _anchor.Bottom + gap : _anchor.Top - gap - h, work.Top + edge, work.Bottom - edge - h);
+        SetRest(new Rectangle(x, y, w, h), down ? BallCorner.TopLeft : BallCorner.BottomLeft, notch: false);
+    }
+
+    void SetRest(Rectangle rect, BallCorner corner, bool notch)
+    {
+        bool reshape = rect.Size != _rest.Size || corner != _corner || notch != _notch;
+        (_rest, _corner, _notch) = (rect, corner, notch);
         if (reshape) ApplyShape();
         if (Visible) ApplyPanelFrame();
+    }
+
+    /// 前景程式的文字游標（螢幕座標）；拿不到（Chrome、VS Code 等自繪游標的程式）就用滑鼠位置
+    static Rectangle CaretOrCursor()
+    {
+        var fg = Native.GetForegroundWindow();
+        uint thread = Native.GetWindowThreadProcessId(fg, out _);
+        var info = new Native.GUITHREADINFO { cbSize = Marshal.SizeOf<Native.GUITHREADINFO>() };
+        if (thread != 0 && Native.GetGUIThreadInfo(thread, ref info) && info.hwndCaret != IntPtr.Zero
+            && info.rcCaret.Bottom > info.rcCaret.Top)
+        {
+            var pt = new Native.POINT { X = info.rcCaret.Left, Y = info.rcCaret.Top };
+            if (Native.ClientToScreen(info.hwndCaret, ref pt))
+            {
+                var caret = new Rectangle(pt.X, pt.Y, Math.Max(1, info.rcCaret.Right - info.rcCaret.Left),
+                    info.rcCaret.Bottom - info.rcCaret.Top);
+                if (Screen.AllScreens.Any(s => s.Bounds.IntersectsWith(caret))) return caret;
+            }
+        }
+        return new Rectangle(Cursor.Position, new Size(1, 1));
     }
 
     /// 大小或角落改變時：內容層裁成往內縮 1.5 px 的抽屜形狀、外框層重畫、分類列換到球那一排並讓開凹口
     void ApplyShape()
     {
-        using (var path = DrawerShape.Build(_rest.Size, _corner, DeviceDpi / 96f, inset: 1.5f))
+        using (var path = DrawerShape.Build(_rest.Size, _corner, DeviceDpi / 96f, inset: 1.5f, notch: _notch))
         {
             var old = Region;
             Region = new Region(path);
             old?.Dispose();
         }
-        _frame.SetShape(_rest.Size, _corner);
+        _frame.SetShape(_rest.Size, _corner, _notch);
 
         bool bottom = _corner is BallCorner.BottomRight or BallCorner.BottomLeft;
         _tabs.Dock = bottom ? DockStyle.Bottom : DockStyle.Top;
         _message.Dock = bottom ? DockStyle.Top : DockStyle.Bottom;
         _tabs.SetNotch(onLeft: _corner is BallCorner.BottomLeft or BallCorner.TopLeft,
-            reserve: L(DrawerShape.NotchReach), separatorOnTop: bottom);
+            reserve: _notch ? L(DrawerShape.NotchReach) : 0, separatorOnTop: bottom);
     }
 
     // ── 鍵盤模式（6.1）──
@@ -399,7 +454,7 @@ sealed class ShelfForm : Form
             case Keys.PageUp: _list.MoveSelection(-5); break;
             case Keys.Enter:
                 // 沒選就複製第一筆：打幾個字、按 Enter 是最快的用法
-                if ((_list.SelectedItem ?? _view.FirstOrDefault()) is { } item && CopyItem(item)) Dismiss();
+                if ((_list.SelectedItem ?? _view.FirstOrDefault()) is { } item) PasteItem(item);
                 break;
             case Keys.Escape:
                 if (_tabs.Input.TextLength > 0) _tabs.Input.Clear();   // 有字先清空，再按一次收起面板
@@ -451,9 +506,18 @@ sealed class ShelfForm : Form
             _tray.Warn($"開機啟動設定失敗：{ex.Message}");
         }
         _store.Limit = s.Limit;
+        ApplyBubbleVisible();
         UpdatePaused();
         ApplyTheme();
         RefreshList(animate: false);
+    }
+
+    void ApplyBubbleVisible()
+    {
+        if (_settings.ShowBubble == _bubble.Visible) return;
+        if (_showing && _atBall) Dismiss();   // 從球展開的抽屜，球不見了就別留著
+        if (_settings.ShowBubble) _bubble.Show();
+        else _bubble.Hide();
     }
 
     void TrySaveSettings()
@@ -486,7 +550,7 @@ sealed class ShelfForm : Form
         }
         if (!_rest.IsEmpty)
         {
-            _frame.SetShape(_rest.Size, _corner);   // 外框層的底色、外框線跟著主題
+            _frame.SetShape(_rest.Size, _corner, _notch);   // 外框層的底色、外框線跟著主題
             if (Visible) ApplyPanelFrame();
         }
         Invalidate(invalidateChildren: true);
@@ -600,6 +664,35 @@ sealed class ShelfForm : Form
         return true;
     }
 
+    /// 單擊、Enter（6.9，同 Win+V）：複製、收起、焦點還給原程式，再送 Ctrl+V 貼上。
+    /// 只想複製用右鍵選單的「複製」
+    void PasteItem(ShelfItem item)
+    {
+        // 鍵盤模式下前景是自己，目標是進來前的視窗；否則面板不搶焦點，前景就是目標
+        var target = _keyboardMode ? _prevForeground : Native.GetForegroundWindow();
+        if (!CopyItem(item)) return;
+        if (_pinOpen) ReleaseKeyboard();
+        else Dismiss();
+        if (target == IntPtr.Zero || target == Handle || target == _frame.Handle || target == _bubble.Handle) return;
+        _pasteTarget = target;
+        _pasteDeadline = Environment.TickCount64 + 1500;
+        _pasteTimer.Start();
+    }
+
+    /// 焦點回到目標、修飾鍵都放開了才送：按著 Win / Alt 時送 Ctrl+V 會變成別的組合鍵
+    void TrySendPaste()
+    {
+        if (Environment.TickCount64 > _pasteDeadline) { _pasteTimer.Stop(); return; }
+        if (Native.GetForegroundWindow() != _pasteTarget) return;
+        foreach (int vk in (int[])[0x10, 0x11, 0x12, 0x5B, 0x5C])   // Shift、Ctrl、Alt、左右 Win
+            if (Native.GetAsyncKeyState(vk) < 0) return;
+        _pasteTimer.Stop();
+        Native.keybd_event(Native.VK_CONTROL, 0, 0, UIntPtr.Zero);
+        Native.keybd_event(Native.VK_V, 0, 0, UIntPtr.Zero);
+        Native.keybd_event(Native.VK_V, 0, Native.KEYEVENTF_KEYUP, UIntPtr.Zero);
+        Native.keybd_event(Native.VK_CONTROL, 0, Native.KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
     /// copy: true 會呼叫 OleFlushClipboard 把所有格式立刻寫進剪貼簿，之後原本的 Bitmap 就可以釋放
     static bool SetClipboard(DataObject data)
     {
@@ -692,7 +785,13 @@ sealed class ShelfForm : Form
     {
         items.Clear();
         if (forTray)
-            items.Add(new ToolStripMenuItem("顯示 Shelf", null, (_, _) => Expand(keyboard: false)) { ShortcutKeyDisplayString = HotkeyText });
+            items.Add(new ToolStripMenuItem("顯示 Shelf", null, (_, _) => Expand(keyboard: false, atBall: _bubble.Visible)) { ShortcutKeyDisplayString = HotkeyText });
+        items.Add(new ToolStripMenuItem("顯示浮動球", null, (_, _) =>
+        {
+            _settings.ShowBubble = !_settings.ShowBubble;
+            TrySaveSettings();
+            ApplyBubbleVisible();
+        }) { Checked = _settings.ShowBubble });
         items.Add(new ToolStripMenuItem("釘住視窗", null, (_, _) => _pinOpen = !_pinOpen) { Checked = _pinOpen, ToolTipText = "點面板外面也不收起" });
         items.Add(new ToolStripMenuItem("暫停收集剪貼簿", null, (_, _) => { _trayPaused = !_trayPaused; UpdatePaused(); }) { Checked = _trayPaused });
         items.Add(new ToolStripSeparator());
