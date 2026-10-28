@@ -219,6 +219,11 @@ static class Native
     [DllImport("kernel32.dll")]
     public static extern uint GetCurrentThreadId();
 
+    /// 兩個參數都傳 -1：把工作集裡的頁面還給系統（閒置時呼叫，見 ShelfForm.TrimMemory）
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessWorkingSetSize(IntPtr process, nint min, nint max);
+
     [DllImport("user32.dll")]
     public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extraInfo);
 

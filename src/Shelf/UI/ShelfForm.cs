@@ -19,6 +19,8 @@ sealed class ShelfForm : Form
     readonly TabBar _tabs = new() { Dock = DockStyle.Bottom };   // 全部 · 文字 · 圖片 · 檔案 · 🔍（含搜尋框）
     readonly MessageBar _message = new() { Dock = DockStyle.Top, Visible = false };   // 錯誤訊息（檔案不存在等）
     readonly ItemListView _list;
+    readonly ThumbnailCache _thumbs;
+    readonly System.Windows.Forms.Timer _trimTimer = new() { Interval = 2000 };   // 收起後閒置一下才釋放記憶體
     readonly TrayService _tray;
     readonly BubbleForm _bubble;
     readonly OutsideClickWatcher _outside = new();
@@ -59,7 +61,7 @@ sealed class ShelfForm : Form
         Theme.Apply(_settings.Theme);
         _store.Limit = _settings.Limit;
 
-        _list = new ItemListView(new ThumbnailCache(_store.Blobs)) { Dock = DockStyle.Fill };
+        _list = new ItemListView(_thumbs = new ThumbnailCache(_store.Blobs)) { Dock = DockStyle.Fill };
 
         // 頂部什麼都沒有，清單從最上面開始；分頁列在底部，最靠近球（面板開在球上方）。
         // 釘住視窗、設定、清空等移到「右鍵點球」與系統匣選單
@@ -105,6 +107,8 @@ sealed class ShelfForm : Form
         _messageTimer.Tick += (_, _) => { _messageTimer.Stop(); _message.Visible = false; };
         _panelTimer.Tick += (_, _) => AnimatePanel();
         _pasteTimer.Tick += (_, _) => TrySendPaste();
+        _trimTimer.Tick += (_, _) => TrimMemory();
+        _trimTimer.Start();   // 啟動完成後也整理一次
         _clock.Tick += (_, _) => { if (Visible) _list.Invalidate(); };
         _clock.Start();
 
@@ -134,7 +138,8 @@ sealed class ShelfForm : Form
         RefreshList(animate: false);
     }
 
-    string HotkeyText => HotkeyService.Format(_settings.HotkeyModifiers, _settings.HotkeyKey);
+    /// 只有一組熱鍵：Win+V（鍵盤 hook，6.10），或自訂的一組（RegisterHotKey）
+    string HotkeyText => _settings.ReplaceWinV ? "Win+V" : HotkeyService.Format(_settings.HotkeyModifiers, _settings.HotkeyKey);
 
     int L(int logical) => LogicalToDeviceUnits(logical);
 
@@ -257,6 +262,18 @@ sealed class ShelfForm : Form
         }
     }
 
+    /// 面板收起、閒置 2 秒後：清掉縮圖快取、壓縮 .NET 堆積並把記憶體還給系統，再把工作集交還給系統。
+    /// 收著的時候工作管理員只算得到幾 MB；下次打開時用到的頁面再從記憶體的待命清單拿回來，幾乎沒有延遲
+    void TrimMemory()
+    {
+        _trimTimer.Stop();
+        if (_showing) return;
+        _thumbs.Clear();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        Native.SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, -1, -1);
+    }
+
     /// 點外面、再點一次球、熱鍵再按一次、Esc、開始拖球。淡出完才真的 Hide
     void Dismiss()
     {
@@ -284,6 +301,8 @@ sealed class ShelfForm : Form
         if (_showing) return;
         Hide();
         _frame.Hide();
+        _trimTimer.Stop();
+        _trimTimer.Start();
         // 淡出完才重設（淡出途中別讓畫面跳）：下次打開從分頁開始，不留上次的搜尋字
         if (_tabs.Searching)
         {
@@ -461,6 +480,7 @@ sealed class ShelfForm : Form
 
     void RegisterHotkey()
     {
+        if (_settings.ReplaceWinV) return;   // 用 Win+V 時不另外註冊
         if (!_hotkey.Register(Handle, _settings.HotkeyModifiers, _settings.HotkeyKey))
             _tray.Warn($"熱鍵 {HotkeyText} 已被其他程式佔用，請到設定換一組，或從系統匣圖示開啟 Shelf。");
     }
@@ -581,7 +601,7 @@ sealed class ShelfForm : Form
         _list.SetItems(_view, animate);
 
         if (_store.Items.Count == 0)
-            _list.SetEmptyText("把檔案、文字或圖片拖到這裡", "按 Ctrl+C 複製的內容也會自動收進來", $"隨時按 {(_settings.ReplaceWinV ? "Win+V" : HotkeyText)} 叫出這個架子");
+            _list.SetEmptyText("把檔案、文字或圖片拖到這裡", "按 Ctrl+C 複製的內容也會自動收進來", $"隨時按 {HotkeyText} 叫出這個架子");
         else if (q.Length > 0)
             _list.SetEmptyText($"找不到「{q}」", "試試其他關鍵字");
         else if (_tabs.Searching)

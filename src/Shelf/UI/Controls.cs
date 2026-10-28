@@ -573,6 +573,112 @@ sealed class ToggleSwitch : PaintedControl
     }
 }
 
+/// Fluent 滑桿：左邊顯示目前的值，右邊細軌道 + 圓鈕（白色外圈、強調色內點）。可拖曳、點軌道跳過去，←→ 一格、PgUp/PgDn 四格
+sealed class Slider : PaintedControl
+{
+    readonly int _min, _max, _step;
+    readonly Func<int, string> _format;
+    int _value;
+    bool _hover, _drag;
+
+    public Slider(int min, int max, int step, Func<int, string> format) : base(selectable: true)
+    {
+        (_min, _max, _step, _format) = (min, max, step, format);
+        _value = min;
+        Size = new Size(L(260), L(32));
+    }
+
+    public event Action? Changed;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public int Value
+    {
+        get => _value;
+        set
+        {
+            value = Math.Clamp((int)Math.Round((double)(value - _min) / _step) * _step + _min, _min, _max);
+            if (value == _value) return;
+            _value = value;
+            Invalidate();
+            Changed?.Invoke();
+        }
+    }
+
+    int LabelW => L(76);
+    Rectangle Track => new(LabelW + L(10), (Height - L(4)) / 2, Width - LabelW - L(20), L(4));
+
+    float Ratio => (float)(_value - _min) / (_max - _min);
+
+    void SetFromX(int x)
+    {
+        var t = Track;
+        Value = _min + (int)Math.Round(Math.Clamp((float)(x - t.Left) / t.Width, 0, 1) * (_max - _min));
+    }
+
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        base.OnMouseDown(e);
+        if (e.Button != MouseButtons.Left) return;
+        Focus();
+        _drag = true;
+        SetFromX(e.X);
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        if (_drag) SetFromX(e.X);
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); _drag = false; Invalidate(); }
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = false; Invalidate(); }
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        Value += Math.Sign(e.Delta) * _step;
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.KeyCode is Keys.Left or Keys.Down) Value -= _step;
+        else if (e.KeyCode is Keys.Right or Keys.Up) Value += _step;
+        else if (e.KeyCode == Keys.PageDown) Value -= 4 * _step;
+        else if (e.KeyCode == Keys.PageUp) Value += 4 * _step;
+        else if (e.KeyCode == Keys.Home) Value = _min;
+        else if (e.KeyCode == Keys.End) Value = _max;
+    }
+
+    protected override bool IsInputKey(Keys keyData) =>
+        keyData is Keys.Left or Keys.Right or Keys.Up or Keys.Down || base.IsInputKey(keyData);
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        ClearBackground(g);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        TextRenderer.DrawText(g, _format(_value), Theme.Body, new Rectangle(0, 0, LabelW, Height), Theme.Text,
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+
+        var t = Track;
+        int x = t.Left + (int)(Ratio * t.Width);
+        Draw.FillRounded(g, Theme.TextSecondary, t, t.Height);
+        Draw.FillRounded(g, Theme.Accent, t with { Width = x - t.Left }, t.Height);
+
+        int outer = L(20), inner = _drag ? L(10) : _hover ? L(14) : L(12);
+        int cy = t.Top + t.Height / 2;
+        var knob = new Rectangle(x - outer / 2, cy - outer / 2, outer, outer);
+        Draw.FillRounded(g, Theme.ControlFill, knob, outer);
+        Draw.StrokeRounded(g, Theme.ControlStroke, knob, outer);
+        Draw.FillRounded(g, Theme.Accent, new Rectangle(x - inner / 2, cy - inner / 2, inner, inner), inner);
+        DrawFocus(g, Rectangle.Inflate(knob, L(2), L(2)), outer / 2);
+    }
+}
+
 /// 分段選擇：淡色軌道裡一張浮起的白卡標出選中項目，切換時滑過去
 sealed class Segmented : PaintedControl
 {

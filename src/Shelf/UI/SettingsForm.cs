@@ -6,13 +6,13 @@ namespace Shelf.UI;
 /// 設定對話框（7.7），Windows 11「設定」App 的卡片樣式。一般的可啟用視窗，不需要 NOACTIVATE 那套。
 sealed class SettingsForm : Form
 {
-    static readonly int[] Limits = [100, 200, 500, 1000];
-
     readonly Settings _s;
-    readonly ToggleSwitch _autoStart, _collect, _bubble, _winV;
+    readonly ToggleSwitch _autoStart, _collect, _bubble;
     readonly HotkeyBox _hotkey;
-    readonly Segmented _theme, _limit;
-    readonly FlowLayoutPanel _body;
+    readonly Segmented _hotkeyMode, _theme;
+    readonly SettingsCard _customHotkey;
+    readonly Slider _limit;
+    readonly FlowLayoutPanel _body, _footer;
 
     public SettingsForm(Settings settings, string usage)
     {
@@ -37,17 +37,24 @@ sealed class SettingsForm : Form
 
         Section("一般");
         Card("開機時自動啟動", null, _autoStart = new ToggleSwitch { Checked = settings.AutoStart });
+        // 一組熱鍵：用 Win+V（取代 Windows 剪貼簿紀錄），或自訂一組；自訂時才出現錄製框
+        Card("呼叫熱鍵", "Win+V 會取代 Windows 的剪貼簿紀錄",
+            _hotkeyMode = new Segmented("Win+V", "自訂") { SelectedIndex = settings.ReplaceWinV ? 0 : 1 });
         _hotkey = new HotkeyBox(settings.HotkeyModifiers, settings.HotkeyKey);
-        Card("呼叫熱鍵", "點一下後直接按下新的組合鍵", new InputBox(_hotkey) { Width = L(170) });
-        Card("取代 Win+V", "按 Win+V 開 Shelf，不開 Windows 剪貼簿紀錄", _winV = new ToggleSwitch { Checked = settings.ReplaceWinV });
+        _customHotkey = Card("自訂熱鍵", "點一下後直接按下新的組合鍵", new InputBox(_hotkey) { Width = L(170) });
+        _customHotkey.Visible = !settings.ReplaceWinV;
+        _hotkeyMode.Changed += () =>
+        {
+            _customHotkey.Visible = _hotkeyMode.SelectedIndex == 1;
+            FitHeight();
+        };
         Card("顯示浮動球", "關閉時用熱鍵或系統匣圖示叫出", _bubble = new ToggleSwitch { Checked = settings.ShowBubble });
         Card("外觀", null, _theme = new Segmented("跟隨系統", "淺色", "深色") { SelectedIndex = (int)settings.Theme });
 
         Section("收集");
         Card("自動收集剪貼簿", "密碼管理員複製的內容一律略過", _collect = new ToggleSwitch { Checked = settings.CollectClipboard });
-        int limitIndex = Array.IndexOf(Limits, settings.Limit);
         Card("保留筆數上限", "超過時刪除最舊的未釘選項目",
-            _limit = new Segmented([.. Limits.Select(n => n.ToString())]) { SelectedIndex = limitIndex < 0 ? 1 : limitIndex });
+            _limit = new Slider(50, 1000, 50, n => $"{n} 筆") { Value = settings.Limit });
 
         Section("資料");
         var open = new FluentButton("開啟資料夾");
@@ -59,7 +66,7 @@ sealed class SettingsForm : Form
         var save = new FluentButton("儲存", ButtonKind.Accent);
         save.Click += (_, _) => Save();
         var cancel = new FluentButton("取消") { DialogResult = DialogResult.Cancel };
-        var footer = new FlowLayoutPanel
+        var footer = _footer = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
             FlowDirection = FlowDirection.RightToLeft,
@@ -75,8 +82,10 @@ sealed class SettingsForm : Form
         Controls.Add(footer);
         AcceptButton = save;
         CancelButton = cancel;
-        ClientSize = new Size(L(520), _body.PreferredSize.Height + footer.Height);
+        FitHeight();
     }
+
+    void FitHeight() => ClientSize = new Size(L(520), _body.PreferredSize.Height + _footer.Height);
 
     public Settings Result => _s;
 
@@ -100,8 +109,8 @@ sealed class SettingsForm : Form
         _s.Theme = (ThemeMode)_theme.SelectedIndex;
         _s.CollectClipboard = _collect.Checked;
         _s.ShowBubble = _bubble.Checked;
-        _s.ReplaceWinV = _winV.Checked;
-        _s.Limit = Limits[_limit.SelectedIndex];
+        _s.ReplaceWinV = _hotkeyMode.SelectedIndex == 0;
+        _s.Limit = _limit.Value;
         DialogResult = DialogResult.OK;
     }
 
@@ -115,12 +124,16 @@ sealed class SettingsForm : Form
             Margin = new Padding(L(2), L(16), 0, L(8)),
         });
 
-    void Card(string title, string? description, Control? control) =>
-        _body.Controls.Add(new SettingsCard(title, description, control)
+    SettingsCard Card(string title, string? description, Control? control)
+    {
+        var card = new SettingsCard(title, description, control)
         {
             Width = L(520) - L(40),
             Margin = new Padding(0, 0, 0, L(4)),
-        });
+        };
+        _body.Controls.Add(card);
+        return card;
+    }
 }
 
 /// 設定卡片：圓角卡片，左邊標題與說明，右邊控制項

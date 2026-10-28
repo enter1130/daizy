@@ -161,8 +161,8 @@ sealed class ItemListView : Control
         foreach (var (row, rect) in RowRects())
         {
             if (row.Item.Id != selected.Id) continue;
-            if (rect.Top < 0) ScrollTo(_scroll + rect.Top);
-            else if (rect.Top + RowHeight > ClientSize.Height) ScrollTo(_scroll + rect.Top + RowHeight - ClientSize.Height);
+            if (rect.Top < Pad) ScrollTo(_scroll + rect.Top - Pad);
+            else if (rect.Top + RowHeight > ClientSize.Height - Pad) ScrollTo(_scroll + rect.Top + RowHeight - ClientSize.Height + Pad);
             break;
         }
         Invalidate();
@@ -260,7 +260,10 @@ sealed class ItemListView : Control
 
     // ── 捲動 ──
 
-    int ContentHeight => (int)Math.Ceiling(_rows.Sum(r => Anim.Ease(r.Size)) * RowHeight);
+    /// 清單上下各留的空間：卡片是 22 px 圓角，不留的話捲到底時最後一列會被圓角和外框切到
+    int Pad => L(8);
+
+    int ContentHeight => (int)Math.Ceiling(_rows.Sum(r => Anim.Ease(r.Size)) * RowHeight) + 2 * Pad;
 
     float MaxScroll => Math.Max(0, ContentHeight - ClientSize.Height);
 
@@ -333,7 +336,7 @@ sealed class ItemListView : Control
     /// 每一列目前的矩形（控制項座標，已含捲動）。高度依動畫進度，0 到 RowHeight
     IEnumerable<(Row Row, Rectangle Rect)> RowRects()
     {
-        float y = -_scroll;
+        float y = Pad - _scroll;
         int rowH = RowHeight;
         foreach (var r in _rows)
         {

@@ -13,6 +13,9 @@
     <Version>1.2.0</Version>
     <Product>Shelf</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 省記憶體（開發文件 1.3）：不要背景 GC 執行緒；不要 PGO 收集的剖析資料 -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
     <!-- WFO1000 要求控制項的公開屬性標註設計工具序列化方式；本專案全部以程式碼建立 UI，不用設計工具 -->
     <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>

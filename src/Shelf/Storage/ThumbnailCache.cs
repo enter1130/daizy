@@ -8,6 +8,14 @@ sealed class ThumbnailCache(BlobStore blobs, int capacity = 100)
     readonly Dictionary<Guid, LinkedListNode<(Guid Id, Image Image)>> _map = [];
     readonly LinkedList<(Guid Id, Image Image)> _lru = new();
 
+    /// 面板收起後清掉（見 ShelfForm.TrimMemory），下次打開再從磁碟讀
+    public void Clear()
+    {
+        foreach (var (_, image) in _lru) image.Dispose();
+        _lru.Clear();
+        _map.Clear();
+    }
+
     public Image? Get(ShelfItem item)
     {
         if (_map.TryGetValue(item.Id, out var node))
