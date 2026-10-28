@@ -14,6 +14,7 @@ sealed class DrawerFrame : Form
     const int ShadowMargin = 20;   // 外形四周留給陰影的空間（邏輯像素）
 
     Bitmap? _bitmap;
+    IntPtr _hBitmap;   // _bitmap 轉好的 GDI 版本，給 UpdateLayeredWindow 用
 
     public DrawerFrame()
     {
@@ -59,17 +60,20 @@ sealed class DrawerFrame : Form
 
         using (var fill = new SolidBrush(Theme.Panel)) g.FillPath(fill, path);
         using (var border = new Pen(Theme.WindowBorder, 1f)) g.DrawPath(border, path);
+
+        // 轉成 GDI 點陣圖只做一次；動畫每一格直接拿來用，不必每格配置一張新的
+        if (_hBitmap != IntPtr.Zero) Native.DeleteObject(_hBitmap);
+        _hBitmap = _bitmap.GetHbitmap(Color.FromArgb(0));
     }
 
     /// 放到抽屜本體的位置（螢幕座標）並套上透明度；動畫每一格呼叫
     public void Present(Rectangle drawer, byte alpha)
     {
-        if (_bitmap is null || !IsHandleCreated) return;
+        if (_bitmap is null || _hBitmap == IntPtr.Zero || !IsHandleCreated) return;
         int m = M;
         var screenDc = Native.GetDC(IntPtr.Zero);
         var memDc = Native.CreateCompatibleDC(screenDc);
-        var hBitmap = _bitmap.GetHbitmap(Color.FromArgb(0));
-        var old = Native.SelectObject(memDc, hBitmap);
+        var old = Native.SelectObject(memDc, _hBitmap);
         try
         {
             var dst = new Native.POINT { X = drawer.X - m, Y = drawer.Y - m };
@@ -81,7 +85,6 @@ sealed class DrawerFrame : Form
         finally
         {
             Native.SelectObject(memDc, old);
-            Native.DeleteObject(hBitmap);
             Native.DeleteDC(memDc);
             Native.ReleaseDC(IntPtr.Zero, screenDc);
         }
@@ -90,6 +93,7 @@ sealed class DrawerFrame : Form
     protected override void Dispose(bool disposing)
     {
         if (disposing) _bitmap?.Dispose();
+        if (_hBitmap != IntPtr.Zero) { Native.DeleteObject(_hBitmap); _hBitmap = IntPtr.Zero; }
         base.Dispose(disposing);
     }
 }
