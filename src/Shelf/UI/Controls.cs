@@ -125,7 +125,7 @@ enum Filter { All, Text, Image, File }
 /// 控制項高度 = 分類列 46 + 和卡片之間的空隙 8；空隙和兩塊之間的縫在面板 Region 之外，看不到也點不到。
 sealed class TabBar : PaintedControl
 {
-    const int SlideMs = 200, FadeMs = 120, MorphMs = 260;
+    const int SlideMs = 200, FadeMs = 120, MorphMs = 160;
     const int RoundSlot = 4, ClearSlot = 5;   // _hover 用：0..3 是分類，4 是圓鈕（搜尋 / 回到分類），5 是 ✕
 
     static readonly (Filter Value, string Label, string Glyph)[] Tabs =
@@ -139,6 +139,8 @@ sealed class TabBar : PaintedControl
     int _hover = -1;
     float _slide = 1, _fromX;   // 選中膠囊從 _fromX 滑到目前分類
     float _searchT;             // 搜尋變形的進度：0 = 分類，1 = 搜尋
+    float _morphFrom;           // 這段變形的起點與開始時間：依實際經過時間算進度，
+    long _morphStart;           // 每格重做外形較花時間，用固定步進的話掉格會讓動畫變慢
 
     public TabBar()
     {
@@ -216,6 +218,7 @@ sealed class TabBar : PaintedControl
     void StartMorph(bool animate)
     {
         if (!animate) _searchT = _searching ? 1 : 0;
+        (_morphFrom, _morphStart) = (_searchT, Environment.TickCount64);
         _timer.Start();
         PerformLayout();
         Invalidate();
@@ -286,7 +289,10 @@ sealed class TabBar : PaintedControl
         float morphTarget = _searching ? 1 : 0;
         if (_searchT != morphTarget)
         {
-            _searchT = Anim.Step(_searchT, morphTarget, MorphMs);
+            // 從起點走到終點的完整時間是 MorphMs；中途反轉時只走剩下的距離
+            float span = Math.Abs(morphTarget - _morphFrom) * MorphMs;
+            float k = span <= 0 ? 1 : Math.Min(1, (Environment.TickCount64 - _morphStart) / span);
+            _searchT = Anim.Lerp(_morphFrom, morphTarget, k);
             PerformLayout();
             ShapeChanged?.Invoke();
             active |= _searchT != morphTarget;
