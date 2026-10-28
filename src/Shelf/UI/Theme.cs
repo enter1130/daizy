@@ -57,6 +57,7 @@ static class Theme
         ? "Segoe Fluent Icons" : "Segoe MDL2 Assets";
     public static readonly Font Icon = new(IconFontName, 10.5f);
     public static readonly Font IconSmall = new(IconFontName, 9f);
+    public static readonly Font IconMedium = new(IconFontName, 12.5f);   // 分類列只有圖示，放大一點
     public static readonly Font IconLarge = new(IconFontName, 24f);
 
     public const string GlyphSearch = "";

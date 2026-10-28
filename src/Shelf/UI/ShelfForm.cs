@@ -31,8 +31,9 @@ sealed class ShelfForm : Form
     const int PanelMs = 160;
     bool _showing;             // 面板的目標狀態；動畫進行中 Visible 仍是 true，判斷「開著沒」一律看這個
     float _shown;              // 動畫進度：0 = 隱藏，1 = 完全顯示
-    Rectangle _rest;           // Place() 算出的最終位置
-    bool _restAbove;           // 面板在球上方（從下往上滑出）還是下方
+    Rectangle _rest;           // Place() 算出的抽屜位置
+    BallCorner _corner;        // 球在抽屜的哪個角
+    readonly DrawerFrame _frame = new();   // 抽屜的外框層（平滑外形、外框線、陰影），在內容視窗正後方
 
     bool _allowShow;           // 啟動時不顯示面板，只顯示球
     bool _keyboardMode, _dragging, _trayPaused;
@@ -130,9 +131,9 @@ sealed class ShelfForm : Form
         get
         {
             var cp = base.CreateParams;
-            // WS_EX_LAYERED：淡入淡出用 SetLayeredWindowAttributes 調整整個視窗的透明度
+            // WS_EX_LAYERED：淡入淡出用 SetLayeredWindowAttributes 調整整個視窗的透明度。
+            // 不用 CS_DROPSHADOW、DWM 圓角：外形是抽屜（Region），陰影和平滑邊緣由後面的 DrawerFrame 畫
             cp.ExStyle |= Native.WS_EX_TOPMOST | Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE | Native.WS_EX_LAYERED;
-            cp.ClassStyle |= Native.CS_DROPSHADOW;   // Flyout 陰影
             return cp;
         }
     }
@@ -143,9 +144,8 @@ sealed class ShelfForm : Form
     {
         base.OnHandleCreated(e);
         Native.SetLayeredWindowAttributes(Handle, 0, 0, Native.LWA_ALPHA);   // 分層視窗沒設過透明度就不會顯示
-        int round = 2;   // DWMWCP_ROUND：Windows 11 圓角，外框顏色在 ApplyTheme 設
-        Native.DwmSetWindowAttribute(Handle, Native.DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int));
-        ApplyWindowBorder();
+        int noRound = 1;   // DWMWCP_DONOTROUND：外形自己用 Region 決定，別讓 DWM 再圓一次角
+        Native.DwmSetWindowAttribute(Handle, Native.DWMWA_WINDOW_CORNER_PREFERENCE, ref noRound, sizeof(int));
         _clipboard.Start(Handle);
         RegisterHotkey();
     }
@@ -174,6 +174,7 @@ sealed class ShelfForm : Form
     {
         _outside.Dispose();
         _store.Dispose();   // 把還在 debounce 的異動寫進 index.json
+        _frame.Close();
         _bubble.Close();
         _tray.Dispose();
         base.OnFormClosed(e);
@@ -198,13 +199,6 @@ sealed class ShelfForm : Form
         base.WndProc(ref m);
     }
 
-    /// 外框交給 DWM 畫：跟著圓角走，自己畫的直角框會在圓角處被切掉
-    void ApplyWindowBorder()
-    {
-        int border = Theme.ColorRef(Theme.WindowBorder);
-        Native.DwmSetWindowAttribute(Handle, Native.DWMWA_BORDER_COLOR, ref border, sizeof(int));
-    }
-
     // ── 展開 / 收起（6.7）──
 
     void TogglePanel(bool keyboard)
@@ -223,6 +217,7 @@ sealed class ShelfForm : Form
             if (!Visible)
             {
                 _shown = 0;
+                _frame.Show();
                 ApplyPanelFrame();
                 _allowShow = true;
                 Show();
@@ -265,6 +260,7 @@ sealed class ShelfForm : Form
         _panelTimer.Stop();
         if (_showing) return;
         Hide();
+        _frame.Hide();
         // 淡出完才重設（淡出途中別讓畫面跳）：下次打開從分頁開始，不留上次的搜尋字
         if (_tabs.Searching)
         {
@@ -273,14 +269,24 @@ sealed class ShelfForm : Form
         }
     }
 
-    /// 依動畫進度設位置與透明度：從球的方向滑出 16 px，同時淡入
+    /// 依動畫進度設位置與透明度：從球的方向斜斜滑出 12 px，同時淡入。
+    /// 外框層、內容層、球三個一起動，Z 順序由下往上：外框 → 內容 → 球
     void ApplyPanelFrame()
     {
         if (!IsHandleCreated) return;
         float e = Anim.Ease(_shown);
-        int offset = (int)((1 - e) * L(16)) * (_restAbove ? 1 : -1);
-        Native.SetWindowPos(Handle, Native.HWND_TOPMOST, _rest.X, _rest.Y + offset, _rest.Width, _rest.Height, Native.SWP_NOACTIVATE);
-        Native.SetLayeredWindowAttributes(Handle, 0, (byte)(e * 255), Native.LWA_ALPHA);
+        int off = (int)((1 - e) * L(12));
+        int dx = _corner is BallCorner.BottomRight or BallCorner.TopRight ? off : -off;
+        int dy = _corner is BallCorner.BottomRight or BallCorner.BottomLeft ? off : -off;
+        var r = _rest with { X = _rest.X + dx, Y = _rest.Y + dy };
+        byte alpha = (byte)(e * 255);
+
+        _frame.Present(r, alpha);
+        const uint keep = Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE;
+        Native.SetWindowPos(_frame.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, keep);
+        Native.SetWindowPos(Handle, Native.HWND_TOPMOST, r.X, r.Y, r.Width, r.Height, Native.SWP_NOACTIVATE);
+        Native.SetLayeredWindowAttributes(Handle, 0, alpha, Native.LWA_ALPHA);
+        Native.SetWindowPos(_bubble.Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, keep);
     }
 
     /// 點到面板和球以外的地方就收起；選單、對話框開著或釘住視窗時不收
@@ -292,29 +298,53 @@ sealed class ShelfForm : Form
         BeginInvoke(Dismiss);   // hook 回呼要快速返回，收起的動作排到訊息迴圈去做
     }
 
-    /// 面板開在球的上方，一側和球對齊、往螢幕中間展開（球在右半邊就右緣對齊往左開，反之亦然），
-    /// 像聊天視窗從角落的聊天球長出來；上面放不下（球靠近螢幕頂端）才改開在下方。
-    /// 高度跟著筆數：剛好放得下全部項目，最少 260 px（空狀態），最多工作區 70%；空間不夠就再縮。
-    /// 用總筆數而不是搜尋結果算：打字搜尋時面板不會一直伸縮。
-    /// 用 SetWindowPos + SWP_NOACTIVATE 而不改 Location，避免閃爍與搶焦點。
+    /// 融合抽屜（設計稿 docs/ui-lshape.html）：球嵌在抽屜的一個角，球心在分類列那一排的正中央。
+    /// 球在螢幕右半邊就往左展開，下半邊就往上展開（分類列在底部、和球同一排）；上面放不下才往下開（分類列改到頂部）。
+    /// 高度跟著筆數：剛好放得下全部項目，最少 200 px（空狀態），最多工作區 70%；用總筆數算，搜尋時不伸縮。
     void Place()
     {
         if (!IsHandleCreated) return;
         var ball = _bubble.Bounds;
+        var c = new Point(ball.Left + ball.Width / 2, ball.Top + ball.Height / 2);   // 球心
         var work = Screen.FromRectangle(ball).WorkingArea;
-        int w = L(300), gap = L(2), min = L(260);
-        int content = _tabs.Height + _store.Items.Count * L(56) + L(8);
-        int want = Math.Clamp(content, min, (int)(work.Height * 0.7));
+        int half = L(DrawerShape.RowHalf), w = L(340), min = L(200);
+        int want = Math.Clamp(_tabs.Height + _store.Items.Count * L(56) + L(16), min, (int)(work.Height * 0.7));
 
-        int above = ball.Top - gap - work.Top, below = work.Bottom - ball.Bottom - gap;
+        int above = c.Y + half - work.Top, below = work.Bottom - (c.Y - half);
         bool up = above >= want || above >= below;
+        bool right = c.X > work.Left + work.Width / 2;
         int h = Math.Max(min, Math.Min(want, up ? above : below));
+        var corner = (up, right) switch
+        {
+            (true, true) => BallCorner.BottomRight,
+            (true, false) => BallCorner.BottomLeft,
+            (false, true) => BallCorner.TopRight,
+            _ => BallCorner.TopLeft,
+        };
 
-        bool ballOnRight = ball.Left + ball.Width / 2 > work.Left + work.Width / 2;
-        int x = Math.Clamp(ballOnRight ? ball.Right - w : ball.Left, work.Left, work.Right - w);
-        int y = Math.Clamp(up ? ball.Top - gap - h : ball.Bottom + gap, work.Top, work.Bottom - h);
-        (_rest, _restAbove) = (new Rectangle(x, y, w, h), up);
+        var rect = new Rectangle(right ? c.X + half - w : c.X - half, up ? c.Y + half - h : c.Y - half, w, h);
+        bool reshape = rect.Size != _rest.Size || corner != _corner;
+        (_rest, _corner) = (rect, corner);
+        if (reshape) ApplyShape();
         if (Visible) ApplyPanelFrame();
+    }
+
+    /// 大小或角落改變時：內容層裁成往內縮 1.5 px 的抽屜形狀、外框層重畫、分類列換到球那一排並讓開凹口
+    void ApplyShape()
+    {
+        using (var path = DrawerShape.Build(_rest.Size, _corner, DeviceDpi / 96f, inset: 1.5f))
+        {
+            var old = Region;
+            Region = new Region(path);
+            old?.Dispose();
+        }
+        _frame.SetShape(_rest.Size, _corner);
+
+        bool bottom = _corner is BallCorner.BottomRight or BallCorner.BottomLeft;
+        _tabs.Dock = bottom ? DockStyle.Bottom : DockStyle.Top;
+        _message.Dock = bottom ? DockStyle.Top : DockStyle.Bottom;
+        _tabs.SetNotch(onLeft: _corner is BallCorner.BottomLeft or BallCorner.TopLeft,
+            reserve: L(DrawerShape.NotchReach), separatorOnTop: bottom);
     }
 
     // ── 鍵盤模式（6.1）──
@@ -454,7 +484,11 @@ sealed class ShelfForm : Form
             c.ForeColor = Theme.Text;
             if (c is TabBar tabs) tabs.RefreshColors();
         }
-        if (IsHandleCreated) ApplyWindowBorder();
+        if (!_rest.IsEmpty)
+        {
+            _frame.SetShape(_rest.Size, _corner);   // 外框層的底色、外框線跟著主題
+            if (Visible) ApplyPanelFrame();
+        }
         Invalidate(invalidateChildren: true);
         _bubble.Render();
     }
