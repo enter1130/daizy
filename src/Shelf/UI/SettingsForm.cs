@@ -18,7 +18,8 @@ sealed class SettingsForm : Form
     {
         _s = settings;
         Text = "Shelf 設定";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        // 可以拉大拉小；內容放不下就捲動，卡片寬度跟著視窗
+        FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = MinimizeBox = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -28,8 +29,8 @@ sealed class SettingsForm : Form
 
         _body = new FlowLayoutPanel
         {
-            Dock = DockStyle.Top,
-            AutoSize = true,
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             Padding = new Padding(L(20), L(8), L(20), L(16)),
@@ -46,7 +47,6 @@ sealed class SettingsForm : Form
         _hotkeyMode.Changed += () =>
         {
             _customHotkey.Visible = _hotkeyMode.SelectedIndex == 1;
-            FitHeight();
         };
         Card("顯示浮動球", "關閉時用熱鍵或系統匣圖示叫出", _bubble = new ToggleSwitch { Checked = settings.ShowBubble });
         Card("外觀", null, _theme = new Segmented("跟隨系統", "淺色", "深色") { SelectedIndex = (int)settings.Theme });
@@ -82,10 +82,26 @@ sealed class SettingsForm : Form
         Controls.Add(footer);
         AcceptButton = save;
         CancelButton = cancel;
-        FitHeight();
+
+        // 預設剛好放下全部內容（最多工作區 85%），最小 420 × 360
+        _body.ClientSizeChanged += (_, _) => FitCards();   // 含捲軸出現 / 消失
+        FitCards();
+        int want = _body.Padding.Vertical + _body.Controls.Cast<Control>().Where(c => c.Visible).Sum(c => c.Height + c.Margin.Vertical);
+        int max = (int)(Screen.FromPoint(Cursor.Position).WorkingArea.Height * 0.85);
+        ClientSize = new Size(L(520), Math.Min(want + _footer.Height, max));
+        MinimumSize = SizeFromClientSize(new Size(L(420), L(360)));
     }
 
-    void FitHeight() => ClientSize = new Size(L(520), _body.PreferredSize.Height + _footer.Height);
+    /// 卡片寬度跟著視窗（扣掉左右留白與捲軸）
+    void FitCards()
+    {
+        int w = _body.ClientSize.Width - _body.Padding.Horizontal;
+        if (w <= 0) return;
+        _body.SuspendLayout();
+        foreach (Control c in _body.Controls)
+            if (c is SettingsCard) c.Width = w;
+        _body.ResumeLayout();
+    }
 
     public Settings Result => _s;
 

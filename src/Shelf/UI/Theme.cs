@@ -126,8 +126,10 @@ static class Draw
         return new Size(d, d);
     }
 
+    // 寬或高是 0 的矩形 GDI+ 會丟「參數無效」（例如滑桿在最小值時已填滿的那段），直接不畫
     public static void FillRounded(Graphics g, Color color, Rectangle r, int radius)
     {
+        if (r.Width <= 0 || r.Height <= 0) return;
         var old = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         using (var b = new SolidBrush(color)) g.FillRoundedRectangle(b, r, Corner(r, radius));
@@ -139,6 +141,7 @@ static class Draw
         var old = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         var box = new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1);
+        if (box.Width <= 0 || box.Height <= 0) return;
         using (var p = new Pen(color, width))
             g.DrawRoundedRectangle(p, box, Corner(box, radius));
         g.SmoothingMode = old;
