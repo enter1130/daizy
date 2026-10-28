@@ -113,7 +113,7 @@
     <tr><td>分類列</td><td>高 56（與球同高、垂直置中）；左端半圓頭；右端凹口，尖角離球心水平 33.9</td></tr>
     <tr><td>內容清單</td><td>寬 350、高度跟著筆數；22 px 圓角；底部在球上方 8 px（＝和分類列之間的間隙）；右緣離球心 25.3，右下角沿凹口圓挖掉成尖角</td></tr>
     <tr><td>左緣</td><td>分類列與清單左緣對齊；分類列寬 = 清單寬 − 59.2（兩個凹口的水平差）</td></tr>
-    <tr><td>尖角</td><td>四個尖角都修圓（約 6° 弧長），不會刺</td></tr>
+    <tr><td>尖角</td><td>凹口和直邊交會處保持銳利，不修圓：月牙形狀更俐落</td></tr>
   </table>
 </div>
 
@@ -125,27 +125,21 @@
   const LIST_W = 350, LIST_R = 22;
   const TABS_W = LIST_W - (LIST_HORN + TAB_HORN);           // 290.8：兩塊左緣對齊
 
-  const deg = Math.PI / 180;
-  const pt = (cx, cy, r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-
-  // 分類列外形（球在右邊的座標）。右端凹口圓心在 (bw + TAB_HORN, TAB_R)
+  // 分類列外形（球在右邊的座標）。右端凹口圓心在 (bw + TAB_HORN, TAB_R)，
+  // 圓和上下緣剛好交在 (bw, 0)、(bw, TAB_H)：尖角保持銳利，不修圓
   function tabsPath(bw) {
-    const cx = bw + TAB_HORN, cy = TAB_R;
-    const aTop = Math.atan2(-TAB_R, -TAB_HORN), aBot = Math.atan2(TAB_R, -TAB_HORN);
-    const [t1x, t1y] = pt(cx, cy, CUT, aTop - 6 * deg), [t2x, t2y] = pt(cx, cy, CUT, aBot + 6 * deg);
-    return `M ${TAB_R} 0 L ${bw - 4} 0 Q ${bw} 0 ${t1x} ${t1y}
-            A ${CUT} ${CUT} 0 0 0 ${t2x} ${t2y}
-            Q ${bw} ${TAB_H} ${bw - 4} ${TAB_H} L ${TAB_R} ${TAB_H} A ${TAB_R} ${TAB_R} 0 0 1 ${TAB_R} 0 Z`;
+    return `M ${TAB_R} 0 L ${bw} 0
+            A ${CUT} ${CUT} 0 0 0 ${bw} ${TAB_H}
+            L ${TAB_R} ${TAB_H} A ${TAB_R} ${TAB_R} 0 0 1 ${TAB_R} 0 Z`;
   }
 
-  // 清單外形（球在右下的座標）：三個 22 px 圓角，右下角沿凹口圓挖掉。凹口圓心在 (w - LIST_HORN, h + GAP + BR)
+  // 清單外形（球在右下的座標）：三個 22 px 圓角，右下角沿凹口圓挖掉。凹口圓心在 (w - LIST_HORN, h + GAP + BR)，
+  // 圓和右緣、底緣剛好交在 (w, h)：尖角保持銳利
   function listPath(w, h) {
-    const cx = w - LIST_HORN, cy = h + GAP + BR, r = LIST_R;
-    const aRight = Math.atan2(-(GAP + BR), LIST_HORN), aLeft = Math.atan2(-(GAP + BR), -LIST_HORN);
-    const [rx, ry] = pt(cx, cy, CUT, aRight - 6 * deg);    // 右下尖角修圓後，弧線的起點
+    const r = LIST_R;
     return `M ${r} 0 L ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r}
-            L ${w} ${h - 4} Q ${w} ${h} ${rx} ${ry}
-            A ${CUT} ${CUT} 0 0 0 ${cx - LIST_HORN} ${h}
+            L ${w} ${h}
+            A ${CUT} ${CUT} 0 0 0 ${w - 2 * LIST_HORN} ${h}
             L ${r} ${h} A ${r} ${r} 0 0 1 0 ${h - r} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
   }
 
