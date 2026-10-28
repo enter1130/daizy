@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf L 形展開</title>
+<style>
+  :root{
+    --page:#e9e9e9; --panel:#f9f9f9; --border:#dcdcdc; --control:#fff; --control-stroke:#e5e5e5; --subtle:#ededed;
+    --text:#1a1a1a; --text2:#5f5f5f; --text3:#8a8a8a; --accent:#8e3fa8; --accent-soft:#f0e3f5; --caution:#9d5d00;
+    --desk1:#cfd8e6; --desk2:#aebbd0; --win:#ffffff;
+    --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; --icons:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  }
+  :root.dark{
+    --page:#1a1a1a; --panel:#2c2c2c; --border:#404040; --control:#373737; --control-stroke:#454545; --subtle:#383838;
+    --text:#fff; --text2:#c5c5c5; --text3:#9a9a9a; --accent:#d9a3e6; --accent-soft:#4a3552; --caution:#fce100;
+    --desk1:#2f3b52; --desk2:#141b2a; --win:#272727;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1240px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:36px 0 6px}
+  p{color:var(--text2);margin:0 0 14px;max-width:900px}
+  .bar-btns{display:flex;gap:8px;margin:4px 0 18px}
+  .btn{font:inherit;color:var(--text);background:var(--control);border:1px solid var(--control-stroke);border-radius:4px;padding:5px 14px;cursor:pointer}
+  .ic{font-family:var(--icons);font-style:normal;line-height:1}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:24px}
+  .cap{font-weight:600;margin:0 0 2px}
+  .sub{font-size:12.5px;color:var(--text2);margin:0 0 10px}
+
+  /* 假桌面 */
+  .desk{position:relative;width:400px;height:540px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,var(--desk1),var(--desk2))}
+  .desk .w{position:absolute;inset:24px 28px 60px 24px;background:var(--win);border-radius:8px;opacity:.55}
+  .desk .tb{position:absolute;left:0;right:0;bottom:0;height:40px;background:rgba(32,32,32,.85)}
+
+  /* 兩塊卡片共同外觀：面板底色、8 px 圓角、外框、陰影 */
+  .card{position:absolute;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+
+  /* 豎直：內容清單 */
+  .list{width:300px;padding:6px 0;overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;margin:2px 4px;padding:8px;border-radius:4px}
+  .row.hover{background:var(--subtle)}
+  .tile{width:36px;height:36px;border-radius:4px;background:var(--control);border:1px solid var(--control-stroke);display:grid;place-items:center;color:var(--text2);font-family:var(--icons);font-size:15px;flex:none;overflow:hidden}
+  .tile.img{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);border:0}
+  .tile.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c);border:0}
+  .tile.xls{color:#2e8b57}
+  .meta{flex:1;min-width:0}
+  .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+  .app{width:14px;height:14px;border-radius:3px;display:inline-block}
+  .app.code{background:#2f80ed}.app.folder{background:#f5c342}.app.snip{background:#7c5fd6}.app.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c)}
+  .acts{color:var(--text2);font-family:var(--icons);font-size:12px;letter-spacing:12px}
+  mark{background:var(--accent-soft);color:inherit;border-radius:2px;padding:0 1px}
+
+  /* 橫向：分類 + 搜尋。外形是 SVG：遠端是膠囊圓頭，靠球那端凹成月牙包住球 */
+  .moon{position:absolute;height:56px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.2))}
+  .moon svg.shape{position:absolute;inset:0;overflow:visible}
+  .moon .shape path{fill:var(--panel);stroke:var(--border);stroke-width:1}
+  .tabs{position:absolute;top:0;height:56px;display:flex;align-items:center;gap:2px;padding:4px}
+  .tab{flex:1;height:46px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text2)}
+  .tab .ic{font-size:15px}.tab .lb{font-size:11px}
+  .tab.on{background:var(--accent-soft);color:var(--accent)}.tab.on .lb{font-weight:600}
+  .tab.search{flex:none;width:46px}
+  .sfield{flex:1;height:46px;border-radius:999px;background:var(--control);border:1px solid var(--accent);display:flex;align-items:center;gap:8px;padding:0 14px}
+  .sfield .ic{color:var(--text2)}
+  .caret{display:inline-block;width:1px;height:16px;background:var(--text);margin-left:-6px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .xbtn{width:46px;height:46px;border-radius:50%;background:var(--subtle);display:grid;place-items:center;font-family:var(--icons);font-size:13px;flex:none}
+
+  .ball{position:absolute;width:56px;height:56px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.35))}
+
+  /* 展開動畫：分類列從球「抽」出來（橫向），內容從球的方向長出來（縱向） */
+  .play .tabs-card{animation:slideX .24s cubic-bezier(.2,.8,.2,1) both}
+  .play .list-card{animation:growY .26s cubic-bezier(.2,.8,.2,1) .06s both}
+  @keyframes slideX{from{transform:scaleX(.15);opacity:0}to{transform:none;opacity:1}}
+  @keyframes growY{from{transform:scaleY(.1);opacity:0}to{transform:none;opacity:1}}
+
+  .spec{font-size:13px;width:100%;border-collapse:collapse;margin-top:8px}
+  .spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--control-stroke);vertical-align:top}
+  .spec th{color:var(--text2);font-weight:600}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="logo" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="24" fill="#c4314b"/>
+    <rect x="15" y="7" width="15" height="20" rx="3" fill="#fff" transform="rotate(-9 22 17)"/>
+    <rect x="19.5" y="10.5" width="7" height="2.4" rx="1.2" fill="#c4314b" opacity=".55" transform="rotate(-9 22 17)"/>
+    <path d="M11 21h26v9.5a3 3 0 0 1-1.6 2.7L24 39.4l-11.4-6.2A3 3 0 0 1 11 30.5z" fill="#8d2336"/>
+    <path d="M11 21h26" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Shelf L 形展開</h1>
+  <p>點球後展開成 L 形：<b>球在轉角</b>，橫的一臂是「分類 + 搜尋」，從球往旁邊抽出來；直的一臂是內容清單，從球往上長。兩塊是分開的卡片，中間留 8 px 間隙，各自有 Windows 11 的圓角與陰影。</p>
+  <div class="bar-btns">
+    <button class="btn" onclick="replay()">▶ 重播展開動畫</button>
+    <button class="btn" onclick="document.documentElement.classList.toggle('dark')">切換淺色 / 深色</button>
+  </div>
+
+  <h2>球在三種位置</h2>
+  <p>L 形跟著球所在的角落翻轉：球在右邊，分類往左抽；球在左邊，往右抽。球靠近螢幕頂端時，內容改往下長。</p>
+  <div class="grid" id="corners"></div>
+
+  <h2>點 🔍 之後</h2>
+  <p>橫的一臂整條變成搜尋框 + ✕；內容清單即時過濾，搜尋所有類型。</p>
+  <div class="grid" id="search"></div>
+
+  <h2>尺寸規格</h2>
+  <table class="spec">
+    <tr><th>部件</th><th>尺寸</th><th>位置（以球在右下為例）</th></tr>
+    <tr><td>球</td><td>56 × 56</td><td>使用者拖到哪就在哪</td></tr>
+    <tr><td>分類列（橫）</td><td>300 × 56，與球同高</td><td>右緣在球左邊 8 px，和球垂直置中</td></tr>
+    <tr><td>內容清單（直）</td><td>寬 300，高度跟著筆數（最多工作區 70%）</td><td>右緣對齊球的右緣，底部在球上方 8 px</td></tr>
+    <tr><td>間隙</td><td>8 px</td><td>三塊之間都是 8 px</td></tr>
+  </table>
+  <p style="margin-top:10px">分類列比清單往外多突出 64 px，所以從遠處看得出是 L 形；清單不再包含分類列，同樣高度可以多放一筆。</p>
+</div>
+
+<script>
+  const rows = (q) => {
+    const all = [
+      ['edge', '', '喚醒企業大腦_UTI.html', 'folder', '2 分鐘前', true],
+      ['', '&#xE8E4;', '本次驗收項目包含真空腔體、渦輪分子幫浦…', 'code', '2 分鐘前'],
+      ['img', '', '圖片 1920×1080', 'snip', '15 分鐘前'],
+      ['xls', '&#xE8A5;', '驗收清單_2026Q4.xlsx', 'folder', '昨天 16:20'],
+      ['', '&#xE8E4;', 'https://intranet.example.com/isms/IT437', 'edge', '昨天 09:12'],
+    ];
+    return all.filter(r => !q || r[2].includes(q)).map(([cls, glyph, t, app, when, hover]) => `
+      <div class="row ${hover && !q ? 'hover' : ''}"><div class="tile ${cls}">${glyph}</div>
+        <div class="meta"><div class="t">${q ? t.replace(q, `<mark>${q}</mark>`) : t}</div><div class="s"><i class="app ${app}"></i>${when}</div></div>
+        ${hover && !q ? '<span class="acts">&#xE718;&#xE74D;</span>' : ''}</div>`).join('');
+  };
+  const tabsHtml = (searching) => searching
+    ? `<div class="sfield"><i class="ic">&#xE721;</i><span>驗收</span><span class="caret"></span></div><div class="xbtn">&#xE711;</div>`
+    : `<div class="tab on"><i class="ic">&#xE71D;</i><span class="lb">全部</span></div>
+       <div class="tab"><i class="ic">&#xE8E4;</i><span class="lb">文字</span></div>
+       <div class="tab"><i class="ic">&#xE91B;</i><span class="lb">圖片</span></div>
+       <div class="tab"><i class="ic">&#xE8B7;</i><span class="lb">檔案</span></div>
+       <div class="tab search"><i class="ic">&#xE721;</i></div>`;
+
+  // 月牙膠囊的外形（座標以「球在右邊」畫，左邊時整個水平翻轉）。
+  // 高 56 = 球的直徑；遠端是半徑 28 的半圓；靠球那端是以球心為圓心、半徑 36（球半徑 28 + 間隙 8）的內凹圓弧。
+  // 圓弧碰到上下緣的地方是尖角（離球心水平 22.6），各用一小段曲線修圓。
+  const H = 56, R = H / 2, CUT = 36, HORN = Math.sqrt(CUT * CUT - R * R);   // 22.63
+  function moonPath(bw) {
+    const cx = bw + HORN, tipY = 4, tipX = cx - Math.sqrt(CUT * CUT - (R - tipY) ** 2);
+    return `M ${R} 0 L ${bw - 4} 0 Q ${bw} 0 ${tipX} ${tipY}
+            A ${CUT} ${CUT} 0 0 0 ${tipX} ${H - tipY}
+            Q ${bw} ${H} ${bw - 4} ${H} L ${R} ${H} A ${R} ${R} 0 0 1 ${R} 0 Z`;
+  }
+
+  // 依球的位置算三塊的座標（桌面 = 外框；工作區扣掉底部 40 px 工作列）
+  function layout(corner, searching) {
+    const W = 400, DH = 500, ball = 56, gap = 8, listW = 300, bw = 330;
+    const right = corner.includes('right'), bottom = corner.includes('bottom');
+    const bx = right ? W - ball - 16 : 16, by = bottom ? DH - ball - 16 : 16;
+    const cx = bx + ball / 2;
+    // 月牙的尖角離球心水平 HORN；內容區留在凹口外，不碰到球
+    const moonX = right ? cx - HORN - bw : cx + HORN;
+    const contentL = right ? 4 : bw - (bw - CUT + HORN - 10), contentW = bw - (CUT - HORN) - 18;
+    const listX = right ? bx + ball - listW : bx;
+    const nRows = searching ? 2 : 5, listH = nRows * 56 + 12;
+    const listY = bottom ? by - gap - listH : by + ball + gap;
+    const originX = right ? 'right' : 'left', originY = bottom ? 'bottom' : 'top';
+    return `
+      <div class="desk"><div class="w"></div><div class="tb"></div>
+        <div class="card list list-card" style="left:${listX}px;top:${listY}px;height:${listH}px;transform-origin:${originX} ${originY}">${rows(searching ? '驗收' : '')}</div>
+        <div class="moon tabs-card" style="left:${moonX}px;top:${by}px;width:${bw}px;transform-origin:${right ? 'right' : 'left'} center">
+          <svg class="shape" width="${bw}" height="${H}" style="${right ? '' : 'transform:scaleX(-1)'}"><path d="${moonPath(bw)}"/></svg>
+          <div class="tabs" style="left:${right ? 4 : bw - contentW - 4}px;width:${contentW}px">${tabsHtml(searching)}</div>
+        </div>
+        <svg class="ball" style="left:${bx}px;top:${by}px"><use href="#logo"/></svg>
+      </div>`;
+  }
+
+  const corners = [
+    ['bottom-right', '球在右下', '最常見的位置：分類往左抽，內容往上長。'],
+    ['bottom-left', '球在左下', '整個左右翻轉：分類往右抽。'],
+    ['top-right', '球在右上', '上面沒空間：內容改往下長，分類仍在球旁邊。'],
+  ];
+  document.getElementById('corners').innerHTML = corners.map(([c, cap, sub]) =>
+    `<div><div class="cap">${cap}</div><div class="sub">${sub}</div><div class="play-target">${layout(c, false)}</div></div>`).join('');
+  document.getElementById('search').innerHTML =
+    `<div><div class="cap">搜尋中（球在右下）</div><div class="sub">輸入「驗收」，清單只剩兩筆，清單也跟著變矮。</div><div class="play-target">${layout('bottom-right', true)}</div></div>`;
+
+  function replay() {
+    document.querySelectorAll('.play-target').forEach(el => { el.classList.remove('play'); void el.offsetWidth; el.classList.add('play'); });
+  }
+  replay();
+</script>
+</body>
+</html>
