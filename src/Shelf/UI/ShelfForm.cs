@@ -233,6 +233,7 @@ sealed class ShelfForm : Form
             if (!_atBall) _anchor = CaretOrCursor();
         }
         Place();
+        bool wasShowing = _showing;
         if (!_showing)
         {
             _showing = true;
@@ -251,7 +252,7 @@ sealed class ShelfForm : Form
         {
             // 熱鍵叫出：直接進搜尋，可以馬上打字
             EnterKeyboardMode();
-            _tabs.BeginSearch();
+            _tabs.BeginSearch(animate: wasShowing);   // 面板剛出現就直接是搜尋的樣子，不播變形
             RefreshList(animate: false);
         }
     }
@@ -286,7 +287,7 @@ sealed class ShelfForm : Form
         // 淡出完才重設（淡出途中別讓畫面跳）：下次打開從分頁開始，不留上次的搜尋字
         if (_tabs.Searching)
         {
-            _tabs.EndSearch();
+            _tabs.EndSearch(animate: false);
             RefreshList(animate: false);
         }
     }
@@ -370,13 +371,13 @@ sealed class ShelfForm : Form
     void ApplyShape()
     {
         if (_rest.IsEmpty) return;
-        using (var path = DrawerShape.Build(_rest.Size, _barOnTop, _tabs.Searching, DeviceDpi / 96f, inset: 1.5f))
+        using (var path = DrawerShape.Build(_rest.Size, _barOnTop, _tabs.SearchProgress, DeviceDpi / 96f, inset: 1.5f))
         {
             var old = Region;
             Region = new Region(path);
             old?.Dispose();
         }
-        _frame.SetShape(_rest.Size, _barOnTop, _tabs.Searching);
+        _frame.SetShape(_rest.Size, _barOnTop, _tabs.SearchProgress);
 
         _tabs.Dock = _barOnTop ? DockStyle.Top : DockStyle.Bottom;
         _message.Dock = _barOnTop ? DockStyle.Bottom : DockStyle.Top;
@@ -542,7 +543,7 @@ sealed class ShelfForm : Form
         }
         if (!_rest.IsEmpty)
         {
-            _frame.SetShape(_rest.Size, _barOnTop, _tabs.Searching);   // 外框層的底色、外框線跟著主題
+            _frame.SetShape(_rest.Size, _barOnTop, _tabs.SearchProgress);   // 外框層的底色、外框線跟著主題
             if (Visible) ApplyPanelFrame();
         }
         Invalidate(invalidateChildren: true);
