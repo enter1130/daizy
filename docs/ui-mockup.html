@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf UI 介面</title>
+<style>
+  :root{
+    --bg:#f3f3f3; --panel:#ffffff; --panel2:#f7f7f7; --line:#e3e3e3; --line2:#d0d0d0;
+    --text:#1b1b1b; --muted:#6b6b6b; --accent:#0067c0; --accent-soft:#e6f0fa;
+    --danger:#c42b1c; --pin:#c98a00; --shadow:0 8px 24px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);
+    --radius:8px;
+  }
+  .dark{
+    --bg:#1f1f1f; --panel:#2b2b2b; --panel2:#333333; --line:#3c3c3c; --line2:#4a4a4a;
+    --text:#f0f0f0; --muted:#a0a0a0; --accent:#4cc2ff; --accent-soft:#1f3a4d;
+    --danger:#ff6b61; --pin:#f0b429; --shadow:0 8px 24px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e8e8e8;color:#1b1b1b;font:14px/1.5 "Segoe UI","Microsoft JhengHei UI","PingFang TC",system-ui,sans-serif;padding:24px 16px 48px}
+  h1{font-size:20px;margin:0 0 4px}
+  .lead{color:#555;margin:0 0 20px;font-size:13px}
+  h2{font-size:15px;margin:36px 0 10px;padding-left:8px;border-left:3px solid #0067c0}
+  .note{font-size:12.5px;color:#555;margin:0 0 14px;max-width:820px}
+  .row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+
+  /* fake desktop */
+  .desk{position:relative;width:560px;height:430px;border-radius:10px;overflow:hidden;flex:none;
+        background:linear-gradient(135deg,#6ea8d6 0%,#3b6fa0 55%,#213f63 100%)}
+  .desk.dark{background:linear-gradient(135deg,#2f3b52 0%,#1d2538 55%,#0f1522 100%)}
+  .desk .win{position:absolute;left:34px;top:30px;width:380px;height:300px;background:var(--panel);
+        border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.3);color:var(--text)}
+  .desk .win .tb{height:32px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--muted)}
+  .desk .win .body{padding:12px;font-size:12px;line-height:1.7;color:var(--muted)}
+  .desk .win .body p{margin:0 0 8px}
+  .taskbar{position:absolute;left:0;right:0;bottom:0;height:40px;background:rgba(32,32,32,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:flex-end;padding:0 10px;gap:10px}
+  .tray{display:flex;gap:8px;align-items:center;color:#ddd;font-size:11px}
+  .tray i{width:16px;height:16px;border-radius:3px;display:inline-block;background:#9aa}
+  .tray i.shelf{background:#4cc2ff;border-radius:50%}
+  .time{color:#eee;font-size:11px;line-height:1.2;text-align:right}
+
+  /* shelf panel */
+  .shelf{position:absolute;right:0;top:40px;width:260px;height:340px;background:var(--panel);color:var(--text);
+         border:1px solid var(--line);border-right:none;border-radius:var(--radius) 0 0 var(--radius);box-shadow:var(--shadow);
+         display:flex;flex-direction:column;overflow:hidden;font-size:12.5px}
+  .shelf.float{position:static;height:430px;width:300px;border-radius:var(--radius);border-right:1px solid var(--line)}
+  .titlebar{height:40px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);flex:none}
+  .search{flex:1;height:26px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);display:flex;align-items:center;padding:0 8px;gap:6px;color:var(--muted);font-size:12px}
+  .search svg{flex:none}
+  .ib{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--muted);flex:none}
+  .ib:hover,.ib.on{background:var(--panel2);color:var(--text)}
+  .ib.on{color:var(--accent)}
+  .filters{height:36px;display:flex;align-items:center;gap:4px;padding:0 8px;border-bottom:1px solid var(--line);flex:none;overflow:hidden}
+  .chip{padding:3px 9px;border-radius:999px;font-size:11.5px;color:var(--muted);border:1px solid transparent;white-space:nowrap}
+  .chip.on{background:var(--accent-soft);color:var(--accent);border-color:transparent;font-weight:600}
+  .list{flex:1;overflow:hidden;position:relative}
+  .item{height:56px;display:flex;align-items:center;gap:10px;padding:0 8px 0 10px;border-bottom:1px solid var(--line);position:relative}
+  .item.hover{background:var(--panel2)}
+  .item.sel{background:var(--accent-soft)}
+  .ico{width:36px;height:36px;border-radius:6px;flex:none;display:grid;place-items:center;background:var(--panel2);overflow:hidden}
+  .ico.thumb{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);}
+  .ico.thumb2{background:linear-gradient(160deg,#9be7c4,#3aa17e 60%,#1d5c48);}
+  .ico.folder{background:#fff2c7}
+  .dark .ico.folder{background:#4a4320}
+  .meta{flex:1;min-width:0}
+  .t{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  .s{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s b{font-weight:600;color:var(--muted)}
+  .pinflag{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pin)}
+  .acts{display:none;gap:2px;flex:none}
+  .item.hover .acts{display:flex}
+  .acts .ib{width:24px;height:24px}
+  .acts .ib.del:hover{color:var(--danger)}
+  .status{height:28px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:11px;color:var(--muted);flex:none}
+  .status a{color:var(--muted)}
+  .empty{position:absolute;inset:12px;border:1.5px dashed var(--line2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-align:center;font-size:12px;padding:16px}
+  .empty .big{font-size:13px;color:var(--text);font-weight:600}
+  .empty kbd{font:11px "Segoe UI",sans-serif;background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:0 5px}
+
+  /* collapsed edge */
+  .ball{position:absolute;right:40px;top:250px;width:48px;height:48px;border-radius:50%;background:var(--accent);box-shadow:0 3px 10px rgba(0,0,0,.3);display:grid;place-items:center}
+  .ball .badge{position:absolute;right:-6px;top:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#e03e2f;color:#fff;font:700 11px/18px "Segoe UI",sans-serif;text-align:center;border:2px solid var(--panel)}
+  .ball.hot{width:60px;height:60px;right:34px;top:244px;background:#2ea043}
+  .hint{position:absolute;right:100px;top:262px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px}
+
+  /* drag ghost */
+  .ghost{position:absolute;left:160px;top:150px;width:170px;height:40px;background:var(--panel);border:1px solid var(--accent);border-radius:6px;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;padding:0 8px;opacity:.92;color:var(--text);font-size:12px;transform:rotate(-2deg)}
+  .ghost .ico{width:26px;height:26px}
+  .cursor{position:absolute;left:318px;top:162px}
+  .droptarget{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)!important}
+
+  /* context menu */
+  .menu{position:absolute;background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:8px;box-shadow:var(--shadow);padding:4px;min-width:170px;font-size:12.5px;z-index:5}
+  .menu div{padding:6px 10px;border-radius:5px;display:flex;justify-content:space-between;gap:16px}
+  .menu div span:last-child{color:var(--muted);font-size:11px}
+  .menu div.hover{background:var(--panel2)}
+  .menu hr{border:none;border-top:1px solid var(--line);margin:4px 2px}
+  .menu .danger{color:var(--danger)}
+
+  /* settings dialog */
+  .dlg{width:420px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);font-size:12.5px;overflow:hidden}
+  .dlg .hd{height:36px;display:flex;align-items:center;padding:0 14px;font-weight:600;border-bottom:1px solid var(--line)}
+  .dlg .sec{padding:12px 14px 4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .dlg .opt{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;gap:12px}
+  .dlg .opt small{display:block;color:var(--muted);font-size:11px}
+  .tg{width:36px;height:18px;border-radius:9px;background:var(--line2);position:relative;flex:none}
+  .tg::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff}
+  .tg.on{background:var(--accent)}
+  .tg.on::after{left:21px}
+  .inp{height:26px;border:1px solid var(--line2);border-radius:5px;background:var(--panel2);padding:0 8px;display:flex;align-items:center;min-width:120px;font-size:12px}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:5px;overflow:hidden}
+  .seg span{padding:3px 10px;font-size:12px}
+  .seg span.on{background:var(--accent);color:#fff}
+  .dlg .ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid var(--line);margin-top:8px}
+  .btn{padding:5px 16px;border-radius:5px;border:1px solid var(--line2);background:var(--panel2)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .cap{font-size:12px;color:#444;margin-top:8px}
+  .spec{font-size:12px;color:#444;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;max-width:820px}
+  .spec table{border-collapse:collapse;width:100%}
+  .spec td,.spec th{border-bottom:1px solid #eee;padding:5px 8px;text-align:left;vertical-align:top}
+  .spec th{color:#666;font-weight:600;font-size:11.5px}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+
+<h1>Shelf 介面設計稿</h1>
+<p class="lead">桌面暫存架：貼齊螢幕右緣的懸浮面板，收集拖入的檔案、剪貼簿文字與圖片。以下為各狀態的靜態示意，尺寸以 100% DPI 為準。</p>
+
+<h2>1. 主畫面：展開狀態（淺色）</h2>
+<p class="note">面板寬 300 px、高為工作區的 70%，貼齊右緣。滑鼠停在第二筆上，顯示懸停動作（複製、釘選、刪除）。第一筆為釘選項目，左側有金色標記並固定置頂。</p>
+<div class="row">
+  <div class="desk">
+    <div class="win">
+      <div class="tb">文件1 - Word</div>
+      <div class="body"><p>設備驗收報告（草稿）</p><p>本次驗收項目包含真空腔體、渦輪分子幫浦及控制系統三大部分，各項測試結果如下表所示。</p><p>▍</p></div>
+    </div>
+    <div class="shelf">
+      <div class="titlebar">
+        <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>搜尋…</div>
+        <div class="ib" title="釘住視窗"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></svg></div>
+        <div class="ib" title="設定"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+        <div class="ib" title="隱藏"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="filters">
+        <span class="chip on">全部</span><span class="chip">檔案</span><span class="chip">文字</span><span class="chip">圖片</span><span class="chip">釘選</span>
+      </div>
+      <div class="list">
+        <div class="item"><div class="pinflag"></div>
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e6b3a" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></svg></div>
+          <div class="meta"><div class="t">驗收清單_2026Q4.xlsx</div><div class="s"><b>檔案</b> · 48 KB · 昨天 16:20</div></div>
+        </div>
+        <div class="item hover">
+          <div class="ico thumb"></div>
+          <div class="meta"><div class="t">圖片 1920×1080</div><div class="s"><b>圖片</b> · 1.4 MB · 剛剛 · 剪取工具</div></div>
+          <div class="acts">
+            <div class="ib" title="複製"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></div>
+            <div class="ib" title="釘選"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></svg></div>
+            <div class="ib del" title="刪除"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div>
+          </div>
+        </div>
+        <div class="item">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+          <div class="meta"><div class="t">本次驗收項目包含真空腔體、渦輪分子幫浦及控制系統三大部分…</div><div class="s"><b>文字</b> · 312 字 · 3 分鐘前 · Word</div></div>
+        </div>
+        <div class="item">
+          <div class="ico folder"><svg width="20" height="20" viewBox="0 0 24 24" fill="#f5c342" stroke="#c99a1a" stroke-width="1.2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div class="meta"><div class="t">設備照片 (14 個項目)</div><div class="s"><b>檔案</b> · 資料夾 · 10 分鐘前</div></div>
+        </div>
+        <div class="item">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+          <div class="meta"><div class="t">https://intranet.example.com/isms/IT437</div><div class="s"><b>文字</b> · 38 字 · 25 分鐘前 · Chrome</div></div>
+        </div>
+        <div class="item">
+          <div class="ico thumb2"></div>
+          <div class="meta"><div class="t">圖片 800×600</div><div class="s"><b>圖片</b> · 220 KB · 1 小時前 · Chrome</div></div>
+        </div>
+      </div>
+      <div class="status"><span>12 項 · 磁碟 3.2 MB</span><a>清空</a></div>
+    </div>
+    <div class="taskbar"><div class="tray"><i></i><i></i><i class="shelf"></i></div><div class="time">16:42<br>2026/10/27</div></div>
+  </div>
+
+  <div class="spec" style="flex:1;min-width:280px">
+    <table>
+      <tr><th>區域</th><th>高度</th><th>內容</th></tr>
+      <tr><td>標題列</td><td>40 px</td><td>搜尋框佔滿寬度；右側三顆 26 px 圖示鈕：釘住視窗、設定、隱藏</td></tr>
+      <tr><td>篩選列</td><td>36 px</td><td>膠囊按鈕，選中為淡藍底、藍字、粗體</td></tr>
+      <tr><td>項目列</td><td>56 px</td><td>36 px 圖示或縮圖 → 標題（單行省略）＋ 次行（類型 · 大小 · 時間 · 來源）→ 懸停動作</td></tr>
+      <tr><td>釘選標記</td><td>3 px 寬</td><td>列左緣金色直條，釘選項目永遠排最前</td></tr>
+      <tr><td>狀態列</td><td>28 px</td><td>左：筆數與磁碟用量；右：清空（點後需確認）</td></tr>
+      <tr><td>面板</td><td>300 × 70% 工作區</td><td>左側 8 px 圓角，右緣貼齊螢幕；WS_EX_TOOLWINDOW + NOACTIVATE</td></tr>
+    </table>
+    <p style="margin:10px 0 0">互動：單擊＝複製到剪貼簿；按住拖曳＝拖出；右鍵＝選單。</p>
+  </div>
+</div>
+
+<h2>2. 深色主題</h2>
+<p class="note">跟隨系統 AppsUseLightTheme。色票與淺色一一對應，強調色改用 Windows 11 深色的亮藍。</p>
+<div class="row">
+  <div class="desk dark">
+    <div class="win dark">
+      <div class="tb">Outlook - 新郵件</div>
+      <div class="body"><p>收件者：設備課 王課長</p><p>主旨：驗收照片</p><p>附上今天拍的設備照片，請確認。</p></div>
+    </div>
+    <div class="shelf dark">
+      <div class="titlebar">
+        <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>搜尋…</div>
+        <div class="ib on" title="釘住視窗（開啟）"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></svg></div>
+        <div class="ib"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg></div>
+        <div class="ib"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="filters">
+        <span class="chip">全部</span><span class="chip on">檔案</span><span class="chip">文字</span><span class="chip">圖片</span><span class="chip">釘選</span>
+      </div>
+      <div class="list">
+        <div class="item"><div class="pinflag"></div>
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6fcf97" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></svg></div>
+          <div class="meta"><div class="t">驗收清單_2026Q4.xlsx</div><div class="s"><b>檔案</b> · 48 KB · 昨天 16:20</div></div>
+        </div>
+        <div class="item sel">
+          <div class="ico folder"><svg width="20" height="20" viewBox="0 0 24 24" fill="#f5c342" stroke="#c99a1a" stroke-width="1.2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div class="meta"><div class="t">設備照片 (14 個項目)</div><div class="s"><b>檔案</b> · 資料夾 · 10 分鐘前</div></div>
+        </div>
+        <div class="item">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e57373" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></div>
+          <div class="meta"><div class="t">CH-210 規格書.pdf</div><div class="s"><b>檔案</b> · 2.1 MB · 2 小時前</div></div>
+        </div>
+        <div class="item">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7aa7e0" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></div>
+          <div class="meta"><div class="t">會議記錄_1027.docx</div><div class="s"><b>檔案</b> · 86 KB · 今天 09:12</div></div>
+        </div>
+      </div>
+      <div class="status"><span>4 項（檔案）· 磁碟 3.2 MB</span><a>清空</a></div>
+      <div class="menu" style="left:70px;top:150px">
+        <div class="hover"><span>複製</span><span>Enter</span></div>
+        <div><span>釘選</span><span>P</span></div>
+        <hr>
+        <div><span>開啟所在資料夾</span><span></span></div>
+        <hr>
+        <div class="danger"><span>刪除</span><span>Del</span></div>
+      </div>
+    </div>
+    <div class="taskbar"><div class="tray"><i></i><i></i><i class="shelf"></i></div><div class="time">16:42<br>2026/10/27</div></div>
+  </div>
+  <div class="spec" style="flex:1;min-width:280px">
+    <table>
+      <tr><th>Token</th><th>淺色</th><th>深色</th></tr>
+      <tr><td>panel</td><td><span class="sw" style="background:#fff"></span>#FFFFFF</td><td><span class="sw" style="background:#2b2b2b"></span>#2B2B2B</td></tr>
+      <tr><td>panel2（懸停、輸入框）</td><td><span class="sw" style="background:#f7f7f7"></span>#F7F7F7</td><td><span class="sw" style="background:#333"></span>#333333</td></tr>
+      <tr><td>line</td><td><span class="sw" style="background:#e3e3e3"></span>#E3E3E3</td><td><span class="sw" style="background:#3c3c3c"></span>#3C3C3C</td></tr>
+      <tr><td>text</td><td><span class="sw" style="background:#1b1b1b"></span>#1B1B1B</td><td><span class="sw" style="background:#f0f0f0"></span>#F0F0F0</td></tr>
+      <tr><td>muted</td><td><span class="sw" style="background:#6b6b6b"></span>#6B6B6B</td><td><span class="sw" style="background:#a0a0a0"></span>#A0A0A0</td></tr>
+      <tr><td>accent</td><td><span class="sw" style="background:#0067c0"></span>#0067C0</td><td><span class="sw" style="background:#4cc2ff"></span>#4CC2FF</td></tr>
+      <tr><td>accent-soft（選中）</td><td><span class="sw" style="background:#e6f0fa"></span>#E6F0FA</td><td><span class="sw" style="background:#1f3a4d"></span>#1F3A4D</td></tr>
+      <tr><td>pin</td><td><span class="sw" style="background:#c98a00"></span>#C98A00</td><td><span class="sw" style="background:#f0b429"></span>#F0B429</td></tr>
+      <tr><td>danger</td><td><span class="sw" style="background:#c42b1c"></span>#C42B1C</td><td><span class="sw" style="background:#ff6b61"></span>#FF6B61</td></tr>
+    </table>
+    <p style="margin:10px 0 0">字型：Segoe UI 9pt，中文回退 Microsoft JhengHei UI。右鍵選單如左圖，快捷鍵顯示在右側。</p>
+  </div>
+</div>
+
+<h2>3. 浮動球與拖入中</h2>
+<p class="note">左：面板收起時只留一顆可拖曳的浮動球，放哪停哪；點一下在球的上方展開面板，點外面收回；拖動球時面板先收起。右：拖檔案到球上，球漸變放大變綠，放開直接收進來，不展開面板。</p>
+<div class="row">
+  <div class="desk">
+    <div class="win"><div class="tb">YouTube - Chrome</div><div class="body" style="background:#111;height:268px;border-radius:0 0 8px 8px"></div></div>
+    <div class="ball"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+    <div class="hint">點一下展開</div>
+    <div class="taskbar"><div class="tray"><i></i><i></i><i class="shelf"></i></div><div class="time">16:42<br>2026/10/27</div></div>
+  </div>
+  <div class="desk">
+    <div class="win"><div class="tb">設備照片 - 檔案總管</div>
+      <div class="body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px">
+        <div style="height:50px;background:#dde7f3;border-radius:4px"></div><div style="height:50px;background:#dde7f3;border-radius:4px"></div><div style="height:50px;background:#dde7f3;border-radius:4px;opacity:.4"></div><div style="height:50px;background:#dde7f3;border-radius:4px"></div>
+        <div style="height:50px;background:#dde7f3;border-radius:4px"></div><div style="height:50px;background:#dde7f3;border-radius:4px"></div><div style="height:50px;background:#dde7f3;border-radius:4px"></div><div style="height:50px;background:#dde7f3;border-radius:4px"></div>
+      </div>
+    </div>
+    <div class="ghost" style="left:300px;top:230px"><div class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg></div>IMG_0421.jpg</div>
+    <div class="ball hot"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg></div>
+    <svg class="cursor" style="left:488px;top:268px" width="18" height="22" viewBox="0 0 18 22"><path d="M2 2l12 10-5 .5 3 6-2.5 1-3-6-4 3z" fill="#fff" stroke="#000" stroke-width="1.3"/></svg>
+    <div class="taskbar"><div class="tray"><i></i><i></i><i class="shelf"></i></div><div class="time">16:42<br>2026/10/27</div></div>
+  </div>
+</div>
+
+<h2>4. 空狀態、系統匣選單、設定對話框</h2>
+<p class="note">空狀態要把三種用法講清楚：拖進來、Ctrl+C 自動收、熱鍵叫出。設定只放第一版會用到的項目，不要一開始就塞滿。</p>
+<div class="row">
+  <div class="shelf float">
+    <div class="titlebar">
+      <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>搜尋…</div>
+      <div class="ib"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></svg></div>
+      <div class="ib"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg></div>
+      <div class="ib"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+    </div>
+    <div class="filters"><span class="chip on">全部</span><span class="chip">檔案</span><span class="chip">文字</span><span class="chip">圖片</span><span class="chip">釘選</span></div>
+    <div class="list">
+      <div class="empty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 11h18M8 5v14"/></svg>
+        <div class="big">把檔案、文字或圖片拖到這裡</div>
+        <div>按 <kbd>Ctrl</kbd>+<kbd>C</kbd> 複製的內容也會自動收進來</div>
+        <div style="margin-top:6px">隨時按 <kbd>Win</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> 叫出這個架子</div>
+      </div>
+    </div>
+    <div class="status"><span>0 項</span><a>清空</a></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div class="menu" style="position:static;display:inline-block;min-width:190px">
+        <div class="hover"><span>顯示 Shelf</span><span>Win+Alt+V</span></div>
+        <div><span>暫停收集剪貼簿</span><span></span></div>
+        <hr>
+        <div><span>設定…</span><span></span></div>
+        <div><span>開啟資料夾</span><span></span></div>
+        <hr>
+        <div><span>結束</span><span></span></div>
+      </div>
+      <div class="cap">系統匣右鍵選單。左鍵單擊圖示直接切換顯示。</div>
+    </div>
+
+    <div class="dlg">
+      <div class="hd">設定</div>
+      <div class="sec">一般</div>
+      <div class="opt"><div>開機時自動啟動</div><div class="tg on"></div></div>
+      <div class="opt"><div>呼叫熱鍵</div><div class="inp">Ctrl + Shift + V</div></div>
+      <div class="opt"><div>外觀</div><div class="seg"><span class="on">跟隨系統</span><span>淺色</span><span>深色</span></div></div>
+      <div class="sec">收集</div>
+      <div class="opt"><div>自動收集剪貼簿</div><div class="tg on"></div></div>
+      <div class="opt"><div>保留筆數上限<small>超過時刪除最舊的未釘選項目</small></div><div class="inp" style="min-width:70px">200</div></div>
+      <div class="opt"><div>略過密碼管理員標記的內容</div><div class="tg on"></div></div>
+      <div class="sec">資料</div>
+      <div class="opt"><div>儲存位置<small>%LOCALAPPDATA%\Shelf</small></div><span class="btn">開啟</span></div>
+      <div class="opt"><div>目前用量：3.2 MB（12 項）</div><span class="btn">清除縮圖快取</span></div>
+      <div class="ft"><span class="btn">取消</span><span class="btn pri">儲存</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>5. 互動流程摘要</h2>
+<div class="spec">
+  <table>
+    <tr><th>動作</th><th>結果</th><th>視覺回饋</th></tr>
+    <tr><td>滑鼠靠近右緣色帶</td><td>面板展開</td><td>150 ms 滑出動畫</td></tr>
+    <tr><td>Win+Alt+V</td><td>切換顯示 / 隱藏；顯示時記住目前前景視窗</td><td>同上，不搶焦點</td></tr>
+    <tr><td>拖檔案到面板</td><td>DragEnter 時面板展開並顯示藍框；放下後新增至清單頂端</td><td>新項目淡入，120 ms</td></tr>
+    <tr><td>Ctrl+C（任何程式）</td><td>自動收進清單頂端；與上一筆相同則略過</td><td>系統匣圖示閃一下（可關）</td></tr>
+    <tr><td>單擊項目</td><td>複製到剪貼簿</td><td>項目短暫亮一下，狀態列顯示「已複製」1.5 秒</td></tr>
+    <tr><td>按住拖曳項目</td><td>DoDragDrop，拖到其他程式</td><td>半透明拖曳影像</td></tr>
+    <tr><td>懸停項目</td><td>右側顯示 複製 / 釘選 / 刪除</td><td>列底色變 panel2</td></tr>
+    <tr><td>點「清空」</td><td>確認對話框，確認後刪除所有未釘選項目</td><td></td></tr>
+    <tr><td>Esc</td><td>隱藏面板</td><td></td></tr>
+    <tr><td>點搜尋框 / 熱鍵叫出後打字</td><td>進入鍵盤模式：暫時取得焦點，Esc 或貼上後歸還原視窗</td><td>搜尋框出現藍色外框</td></tr>
+    <tr><td>搜尋框輸入</td><td>即時過濾，中文也可</td><td>清單立即更新，不閃</td></tr>
+    <tr><td>↑ ↓ Enter</td><td>鍵盤選取；Enter 貼到原前景視窗</td><td>選中列淡藍底</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

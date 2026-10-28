@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 圖示方案</title>
+<style>
+  :root{ --page:#1a1a1a; --card:#2b2b2b; --text:#fff; --text2:#c5c5c5; --text3:#9a9a9a; --divider:#3d3d3d;
+         --a1:#e9c2f2; --a2:#b06cc8; --accent:#d9a3e6; --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; }
+  :root.blue{ --a1:#7cc4ff; --a2:#0a5fb8; --accent:#4cc2ff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 8px}
+  p{color:var(--text2);margin:0 0 14px;max-width:860px}
+  .btn{font:inherit;color:var(--text);background:#373737;border:1px solid #454545;border-radius:4px;padding:5px 14px;cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .opt{background:var(--card);border:1px solid #1c1c1c;border-radius:8px;padding:18px}
+  .opt h3{margin:0;font-size:15px;font-weight:600}
+  .opt .why{font-size:12.5px;color:var(--text2);margin:2px 0 14px;min-height:38px}
+  .row{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+  .cap{font-size:11px;color:var(--text3);text-align:center;margin-top:6px}
+  .taskbar{display:flex;align-items:center;gap:14px;border-radius:6px;padding:8px 12px}
+  .taskbar.dark{background:#1c1c1c}
+  .taskbar.light{background:#eeeeee}
+  svg{display:block}
+  .now{opacity:.9}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--divider)}
+  th{color:var(--text2);font-weight:600}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--a1)"/><stop offset="1" stop-color="var(--a2)"/></linearGradient>
+    <radialGradient id="shine" cx=".32" cy=".25" r=".6"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+
+    <!-- 球底：漸層 + 左上柔光 + 細亮邊 -->
+    <symbol id="ball" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="23" fill="url(#g)"/>
+      <circle cx="24" cy="24" r="23" fill="url(#shine)"/>
+      <circle cx="24" cy="24" r="22.5" fill="none" stroke="#fff" stroke-opacity=".25"/>
+    </symbol>
+
+    <!-- 1 收納架：托盤上放著兩件東西 -->
+    <symbol id="m1" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6.5" y="4.5" width="6" height="7.5" rx="1.5" fill="#fff" stroke="none"/>
+      <rect x="13.5" y="7.5" width="4.5" height="4.5" rx="1.2" fill="#fff" fill-opacity=".7" stroke="none"/>
+      <path d="M4.5 13.5v3a3 3 0 0 0 3 3h9a3 3 0 0 0 3-3v-3"/>
+    </symbol>
+    <!-- 2 卡片疊：收集來的東西疊在一起 -->
+    <symbol id="m2" viewBox="0 0 24 24">
+      <rect x="8.5" y="3.5" width="11" height="13.5" rx="2.5" fill="#fff" fill-opacity=".5"/>
+      <rect x="4.5" y="7" width="11" height="13.5" rx="2.5" fill="#fff"/>
+      <path d="M7.5 12h5M7.5 15.5h3.5" stroke="var(--a2)" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <!-- 3 S 字 -->
+    <symbol id="m3" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round">
+      <path d="M16.2 7.6c-.8-1.5-2.4-2.4-4.3-2.4-2.5 0-4.2 1.4-4.2 3.3 0 4.3 8.8 2.5 8.8 7.2 0 2-1.9 3.4-4.5 3.4-2 0-3.8-1-4.6-2.6"/>
+    </symbol>
+    <!-- 4 放進來：盒子 + 向下箭頭 -->
+    <symbol id="m4" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.5 13v3.5a3 3 0 0 0 3 3h9a3 3 0 0 0 3-3V13"/>
+      <path d="M12 4v10M8.3 10.3 12 14l3.7-3.7"/>
+    </symbol>
+    <!-- 現況：剪貼簿 -->
+    <symbol id="m0" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round">
+      <rect x="6" y="5" width="9" height="14" rx="2"/><rect x="9" y="3.5" width="3.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="7" height="11" rx="1.5" fill="url(#g)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Shelf 圖示方案</h1>
+  <p>浮動球、系統匣、程式圖示（開始功能表、安裝檔）用同一個標誌。球底統一改成<b>漸層 + 左上柔光 + 細亮邊</b>，比現在的純色圓更有 Fluent 的立體感；顏色仍跟你的系統強調色走。</p>
+  <button class="btn" onclick="document.documentElement.classList.toggle('blue')">切換強調色：紫 / 藍</button>
+
+  <h2>標誌方案</h2>
+  <p>每個方案都看三種尺寸：浮動球 56 px、系統匣 16 / 24 px（深色與淺色工作列）、程式圖示 64 px。<b>16 px 時還認得出來</b>是重點。</p>
+  <div class="grid" id="grid"></div>
+
+  <h2>怎麼選</h2>
+  <table>
+    <tr><th>方案</th><th>意思</th><th>16 px 辨識度</th><th>和 Windows 內建圖示撞不撞</th></tr>
+    <tr><td>現況 剪貼簿</td><td>剪貼簿</td><td>普通（細線糊掉）</td><td>撞：和 Win+V、Office 的「貼上」幾乎一樣</td></tr>
+    <tr><td>1 收納架</td><td>東西放在架子上，呼應「Shelf」</td><td>好</td><td>不撞</td></tr>
+    <tr><td>2 卡片疊</td><td>收集來的項目疊在一起</td><td>很好（實心塊面）</td><td>不撞</td></tr>
+    <tr><td>3 S 字</td><td>名字縮寫</td><td>很好</td><td>不撞，但看不出用途</td></tr>
+    <tr><td>4 放進來</td><td>把東西丟進來</td><td>好</td><td>有點像「下載」</td></tr>
+  </table>
+</div>
+
+<script>
+  const opts = [
+    ['m0', '現況　剪貼簿', '和 Win+V、Office「貼上」圖示幾乎一樣，系統匣 16 px 時細線會糊。'],
+    ['m1', '1　收納架', '托盤上放著兩件東西，直接對應 Shelf（架子）這個名字。'],
+    ['m2', '2　卡片疊', '兩張疊在一起的卡片，代表收集來的項目；實心塊面，小尺寸最清楚。'],
+    ['m3', '3　S 字', '名字縮寫，最簡潔，但看不出是做什麼的。'],
+    ['m4', '4　放進來', '盒子加向下箭頭，強調「丟進來就收」；缺點是有點像下載。'],
+  ];
+  const icon = (m, size, mark = .52) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 48 48"><use href="#ball"/>` +
+    `<svg x="${24 - 24 * mark}" y="${24 - 24 * mark}" width="${48 * mark}" height="${48 * mark}"><use href="#${m}"/></svg></svg>`;
+  document.getElementById('grid').innerHTML = opts.map(([m, name, why]) => `
+    <div class="opt ${m === 'm0' ? 'now' : ''}">
+      <h3>${name}</h3><div class="why">${why}</div>
+      <div class="row">
+        <div>${icon(m, 56)}<div class="cap">浮動球</div></div>
+        <div>${icon(m, 64)}<div class="cap">程式圖示</div></div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="row">
+        <div><div class="taskbar dark">${icon(m, 16, .6)}${icon(m, 24, .58)}</div><div class="cap">深色工作列</div></div>
+        <div><div class="taskbar light">${icon(m, 16, .6)}${icon(m, 24, .58)}</div><div class="cap">淺色工作列</div></div>
+      </div>
+    </div>`).join('');
+</script>
+</body>
+</html>

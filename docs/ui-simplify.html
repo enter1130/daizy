@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 簡化設計稿</title>
+<style>
+  /* Fluent 深色 token（同 src/Shelf/UI/Theme.cs），強調色用使用者目前的系統色 */
+  :root{
+    --page:#1a1a1a; --panel:#2c2c2c; --window:#202020; --card:#2b2b2b; --divider:#3d3d3d; --border:#404040;
+    --control:#373737; --control-stroke:#454545; --subtle:#383838; --subtle-strong:#464646;
+    --text:#ffffff; --text2:#c5c5c5; --text3:#9a9a9a;
+    --accent:#d9a3e6; --on-accent:#000; --caution:#fce100; --danger:#ff99a4;
+    --r:4px; --r-overlay:8px;
+    --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif;
+    --icons:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  }
+  :root.light{
+    --page:#e9e9e9; --panel:#f9f9f9; --window:#f3f3f3; --card:#fbfbfb; --divider:#e5e5e5; --border:#dcdcdc;
+    --control:#fff; --control-stroke:#e5e5e5; --subtle:#ededed; --subtle-strong:#e0e0e0;
+    --text:#1a1a1a; --text2:#5f5f5f; --text3:#8a8a8a;
+    --accent:#8e3fa8; --on-accent:#fff; --caution:#9d5d00; --danger:#c42b1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1320px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:44px 0 6px}
+  h3{font-size:14px;font-weight:600;margin:0 0 4px}
+  p.lead{color:var(--text2);margin:0 0 18px;max-width:860px}
+  .note{color:var(--text2);font-size:13px;margin:0 0 16px;max-width:900px}
+  .toolbar{display:flex;gap:8px;margin-bottom:8px}
+  .btn{font:inherit;color:var(--text);background:var(--control);border:1px solid var(--control-stroke);border-bottom-color:#3a3a3a;border-radius:var(--r);padding:5px 14px;cursor:pointer}
+  .ic{font-family:var(--icons);font-style:normal;line-height:1;display:inline-grid;place-items:center}
+
+  /* 版面：四欄並排 */
+  .compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start}
+  .col h3 .tag{font-size:11px;font-weight:600;color:var(--on-accent);background:var(--accent);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+  .col h3 .tag.now{background:var(--text3)}
+  .col .desc{color:var(--text2);font-size:12.5px;margin:0 0 12px;min-height:58px}
+  .stage{position:relative;padding-bottom:70px}
+  .changes{margin:12px 0 0;padding:0 0 0 18px;color:var(--text2);font-size:12.5px}
+  .changes li{margin:2px 0}
+  .changes b{color:var(--text);font-weight:600}
+
+  /* 面板 */
+  .panel{width:300px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-overlay);overflow:hidden;
+         box-shadow:0 8px 28px rgba(0,0,0,.45)}
+  .top{display:flex;align-items:center;gap:4px;padding:8px}
+  .search{flex:1;height:32px;background:var(--control);border:1px solid var(--control-stroke);border-bottom-color:#3a3a3a;border-radius:var(--r);
+          display:flex;align-items:center;padding:0 10px;color:var(--text3);font-size:14px;gap:8px}
+  .search.focus{background:#1f1f1f;border-bottom:2px solid var(--accent)}
+  .search .ic{margin-left:auto;font-size:14px;color:var(--text2)}
+  .ibtn{width:32px;height:32px;border-radius:var(--r);color:var(--text);font-size:15px}
+  .ibtn:hover{background:var(--subtle)}
+  .tabs{display:flex;gap:2px;padding:0 8px 6px;border-bottom:1px solid var(--divider)}
+  .tab{position:relative;padding:6px 10px;color:var(--text2)}
+  .tab.on{color:var(--text);font-weight:600}
+  .tab.on::after{content:"";position:absolute;left:50%;bottom:-1px;width:16px;height:3px;margin-left:-8px;border-radius:2px;background:var(--accent)}
+  .list{padding:4px 0}
+  .row{position:relative;display:flex;align-items:center;gap:12px;margin:2px 4px;padding:8px;border-radius:var(--r)}
+  .row.hover{background:var(--subtle)}
+  .tile{width:36px;height:36px;border-radius:var(--r);background:var(--control);border:1px solid var(--control-stroke);flex:none;
+        display:grid;place-items:center;color:var(--text2);font-family:var(--icons);font-size:15px;overflow:hidden}
+  .tile.img{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);border:none}
+  .tile.img2{background:linear-gradient(160deg,#9be7c4,#3aa17e 60%,#1d5c48);border:none}
+  .tile.xls{color:#4caf72}
+  .tile.pdf{color:#e57373}
+  .meta{flex:1;min-width:0}
+  .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+  .pin{color:var(--caution);font-family:var(--icons);font-size:12px;flex:none}
+  .acts{display:flex;gap:2px;flex:none}
+  .acts .ibtn{width:24px;height:24px;font-size:12px;color:var(--text2)}
+  .acts .ibtn.hot{background:var(--subtle-strong);color:var(--text)}
+  .status{display:flex;justify-content:space-between;align-items:center;height:36px;padding:0 12px;border-top:1px solid var(--divider);font-size:12px;color:var(--text2)}
+  .status a{color:var(--accent)}
+  .spacer{height:210px}
+
+  /* 來源程式小圖示 */
+  .app{width:14px;height:14px;border-radius:3px;flex:none;display:inline-block}
+  .app.code{background:#2f80ed}
+  .app.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c)}
+  .app.word{background:#2b5797}
+  .app.snip{background:#7c5fd6}
+  .app.exp{background:#f5c342}
+
+  /* 方案 B：卡片 */
+  .cards{padding:4px 8px 8px;display:flex;flex-direction:column;gap:6px}
+  .cardi{position:relative;background:var(--card);border:1px solid #1c1c1c;border-radius:var(--r-overlay);padding:10px 12px}
+  .cardi.hover{background:#323232}
+  .cardi .body{font-size:13.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .cardi .foot{margin-top:6px;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)}
+  .cardi .foot .pin{margin-left:auto}
+  .cardi .shot{height:96px;border-radius:var(--r);background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a)}
+  .cardi .file{display:flex;align-items:center;gap:10px}
+  .cardi .file .tile{width:28px;height:28px;font-size:13px}
+
+  /* 方案 C：單行 */
+  .lines{padding:4px 0}
+  .line{display:flex;align-items:center;gap:10px;margin:1px 4px;padding:7px 8px;border-radius:var(--r)}
+  .line.hover{background:var(--subtle)}
+  .line .glyph{width:20px;text-align:center;color:var(--text3);font-family:var(--icons);font-size:13px;flex:none}
+  .line .thumb{width:20px;height:20px;border-radius:3px;flex:none;background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a)}
+  .line .t{flex:1}
+  .line .when{font-size:12px;color:var(--text3);flex:none}
+  .hint{font-size:11.5px;color:var(--text3);padding:6px 12px 8px}
+  .filterpill{font-size:12px;color:var(--text2);border:1px solid var(--control-stroke);border-radius:999px;padding:1px 8px}
+
+  /* 球 */
+  .ball{position:absolute;right:0;bottom:0;width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--on-accent);
+        display:grid;place-items:center;font-family:var(--icons);font-size:22px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+
+  /* 元件規格 */
+  .sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .spec{background:var(--card);border:1px solid #1c1c1c;border-radius:var(--r-overlay);padding:16px}
+  .spec .demo{background:var(--panel);border-radius:var(--r);padding:8px;margin:10px 0}
+  .spec ul{margin:6px 0 0;padding-left:18px;color:var(--text2);font-size:12.5px}
+  .menu{width:200px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-overlay);padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .menu div{padding:6px 10px;border-radius:var(--r);display:flex;justify-content:space-between}
+  .menu div.hover{background:var(--subtle)}
+  .menu div span:last-child{color:var(--text2);font-size:12px}
+  .menu hr{border:0;border-top:1px solid var(--divider);margin:4px 0}
+  .menu .danger{color:var(--danger)}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--divider);vertical-align:top}
+  th{color:var(--text2);font-weight:600}
+  td.y{color:#6ccb5f} td.n{color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Shelf 簡化設計稿</h1>
+  <p class="lead">把現況和三種簡化方向並排比較。三種都沿用目前的 Fluent 設計規範（色彩、圓角、字級不變），差在「留下哪些東西」。看完選一個，或混搭（例如 A 的頂部 + C 的清單）。</p>
+  <div class="toolbar"><button class="btn" onclick="document.documentElement.classList.toggle('light')">切換淺色 / 深色</button></div>
+
+  <h2>1. 四個方向並排</h2>
+  <p class="note">同樣 5 筆資料、滑鼠停在第二筆上。面板寬度都是 300 px。</p>
+
+  <div class="compare">
+
+    <!-- 現況 -->
+    <div class="col">
+      <h3>現況<span class="tag now">v1.0</span></h3>
+      <p class="desc">頂部 3 顆按鈕、5 個分頁、每列兩行（次行 4 段資訊）、底部狀態列；面板固定 70% 螢幕高。</p>
+      <div class="stage">
+        <div class="panel">
+          <div class="top">
+            <div class="search">搜尋…<i class="ic">&#xE721;</i></div>
+            <i class="ic ibtn">&#xE718;</i><i class="ic ibtn">&#xE713;</i><i class="ic ibtn">&#xE711;</i>
+          </div>
+          <div class="tabs"><span class="tab on">全部</span><span class="tab">檔案</span><span class="tab">文字</span><span class="tab">圖片</span><span class="tab">釘選</span></div>
+          <div class="list">
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">起來了，也登錄好了（4 顆</div><div class="s">文字 · 13 字 · 1 分鐘前 · Visual Studio Co…</div></div></div>
+            <div class="row hover"><div class="tile img"></div><div class="meta"><div class="t">圖片 1920×1080</div><div class="s">圖片 · 1.4 MB · 3 分鐘前 · 剪取…</div></div>
+              <div class="acts"><i class="ic ibtn">&#xE8C8;</i><i class="ic ibtn">&#xE718;</i><i class="ic ibtn">&#xE74D;</i></div></div>
+            <div class="row"><div class="tile xls">&#xE8A5;</div><div class="meta"><div class="t">驗收清單_2026Q4.xlsx</div><div class="s">檔案 · 48 KB · 10 分鐘前 · Windows…</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">https://intranet.example.com/isms/IT437</div><div class="s">文字 · 38 字 · 25 分鐘前 · Microsoft E…</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">把 Shelf 解除安裝</div><div class="s">文字 · 12 字 · 1 小時前 · Visual Studio Co…</div></div></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="status"><span>5 項 · 磁碟 1.4 MB</span><a>清空</a></div>
+        </div>
+        <i class="ball">&#xE77F;</i>
+      </div>
+    </div>
+
+    <!-- A 精簡 -->
+    <div class="col">
+      <h3>A　精簡<span class="tag">建議</span></h3>
+      <p class="desc">版面骨架不變，拿掉重複和少用的東西。改動最小、最不需要重新習慣。</p>
+      <div class="stage">
+        <div class="panel">
+          <div class="top">
+            <div class="search">搜尋…<i class="ic">&#xE721;</i></div>
+            <i class="ic ibtn">&#xE712;</i>
+          </div>
+          <div class="tabs"><span class="tab on">全部</span><span class="tab">檔案</span><span class="tab">文字</span><span class="tab">圖片</span></div>
+          <div class="list">
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">起來了，也登錄好了（4 顆</div><div class="s"><i class="app code"></i>1 分鐘前</div></div><i class="pin">&#xE840;</i></div>
+            <div class="row hover"><div class="tile img"></div><div class="meta"><div class="t">圖片 1920×1080</div><div class="s"><i class="app snip"></i>3 分鐘前</div></div>
+              <div class="acts"><i class="ic ibtn">&#xE718;</i><i class="ic ibtn hot">&#xE74D;</i></div></div>
+            <div class="row"><div class="tile xls">&#xE8A5;</div><div class="meta"><div class="t">驗收清單_2026Q4.xlsx</div><div class="s"><i class="app exp"></i>10 分鐘前</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">https://intranet.example.com/isms/IT437</div><div class="s"><i class="app edge"></i>25 分鐘前</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">把 Shelf 解除安裝</div><div class="s"><i class="app code"></i>1 小時前</div></div></div>
+          </div>
+        </div>
+        <i class="ball">&#xE77F;</i>
+      </div>
+      <ul class="changes">
+        <li><b>頂部只剩「⋯」</b>：釘住視窗、設定、清空收進選單；關閉鈕拿掉（點外面 / Esc / 點球已能關）</li>
+        <li><b>分頁 5 → 4</b>：拿掉「釘選」（釘選的本來就排最上面）</li>
+        <li><b>次行只留來源圖示 + 時間</b>：類型看左邊圖示、大小和字數拿掉；來源程式改成 14 px 小圖示，不再被截斷</li>
+        <li><b>懸停動作 3 → 2</b>：拿掉「複製」（單擊整列就是複製）</li>
+        <li><b>拿掉狀態列</b>；「已複製」改成球上短暫的勾勾</li>
+        <li><b>高度跟著內容</b>：最多 70% 螢幕，筆數少就縮短</li>
+      </ul>
+    </div>
+
+    <!-- B 卡片 -->
+    <div class="col">
+      <h3>B　卡片（像 Win+V）</h3>
+      <p class="desc">內容優先：文字直接顯示前 3 行、圖片顯示大縮圖。一眼看到內容，但一屏能放的筆數較少。</p>
+      <div class="stage">
+        <div class="panel">
+          <div class="top">
+            <div class="search">搜尋…<i class="ic">&#xE71C;</i></div>
+            <i class="ic ibtn">&#xE712;</i>
+          </div>
+          <div class="cards">
+            <div class="cardi"><div class="body">起來了，也登錄好了（4 顆）</div><div class="foot"><i class="app code"></i>1 分鐘前<i class="pin">&#xE840;</i></div></div>
+            <div class="cardi hover"><div class="shot"></div><div class="foot"><i class="app snip"></i>3 分鐘前</div></div>
+            <div class="cardi"><div class="file"><div class="tile xls">&#xE8A5;</div><div class="t">驗收清單_2026Q4.xlsx</div></div><div class="foot"><i class="app exp"></i>10 分鐘前</div></div>
+            <div class="cardi"><div class="body">本次驗收項目包含真空腔體、渦輪分子幫浦及控制系統三大部分，各項測試結果如下表所示，請設備課確認後回覆。</div><div class="foot"><i class="app word"></i>25 分鐘前</div></div>
+          </div>
+        </div>
+        <i class="ball">&#xE77F;</i>
+      </div>
+      <ul class="changes">
+        <li><b>沒有分頁</b>：搜尋框右邊一個篩選圖示，點開才選類型</li>
+        <li><b>每筆一張卡片</b>：文字最多 3 行、圖片 96 px 高縮圖、檔案是圖示 + 檔名</li>
+        <li><b>只有時間和來源</b>，放在卡片底部</li>
+        <li>其餘同 A：「⋯」選單、無狀態列、高度跟著內容</li>
+      </ul>
+    </div>
+
+    <!-- C 極簡 -->
+    <div class="col">
+      <h3>C　極簡清單</h3>
+      <p class="desc">一列一行，像檔案總管的清單檢視。最清爽、一屏放最多筆，但資訊最少。</p>
+      <div class="stage">
+        <div class="panel">
+          <div class="top">
+            <div class="search focus"><span style="color:var(--text)">驗收</span><span class="filterpill">全部 ▾</span></div>
+          </div>
+          <div class="lines">
+            <div class="line"><span class="glyph">&#xE8E4;</span><span class="t">起來了，也登錄好了（4 顆</span><i class="pin">&#xE840;</i><span class="when">1 分</span></div>
+            <div class="line hover"><span class="thumb"></span><span class="t">圖片 1920×1080</span><span class="when">3 分</span></div>
+            <div class="line"><span class="glyph" style="color:#4caf72">&#xE8A5;</span><span class="t">驗收清單_2026Q4.xlsx</span><span class="when">10 分</span></div>
+            <div class="line"><span class="glyph">&#xE8E4;</span><span class="t">https://intranet.example.com/isms/IT437</span><span class="when">25 分</span></div>
+            <div class="line"><span class="glyph">&#xE8E4;</span><span class="t">把 Shelf 解除安裝</span><span class="when">1 時</span></div>
+          </div>
+          <div class="hint">右鍵：釘選、刪除、更多…</div>
+        </div>
+        <i class="ball">&#xE77F;</i>
+      </div>
+      <ul class="changes">
+        <li><b>頂部只有搜尋框</b>，類型篩選是框內的小下拉；設定移到系統匣 / 右鍵球</li>
+        <li><b>每列一行</b>：20 px 圖示 + 內容 + 右邊時間；不顯示來源</li>
+        <li><b>沒有懸停按鈕</b>：釘選、刪除都在右鍵選單</li>
+        <li>其餘同 A：無狀態列、高度跟著內容</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>2. 比較</h2>
+  <table>
+    <tr><th></th><th>現況</th><th>A 精簡</th><th>B 卡片</th><th>C 極簡</th></tr>
+    <tr><td>清單上方的固定元素</td><td>搜尋 + 3 鈕 + 5 分頁</td><td>搜尋 + 1 鈕 + 4 分頁</td><td>搜尋 + 1 鈕</td><td>搜尋</td></tr>
+    <tr><td>每筆顯示的資訊</td><td>標題 + 4 段</td><td>標題 + 來源圖示 + 時間</td><td>內容 3 行 + 來源 + 時間</td><td>標題 + 時間</td></tr>
+    <tr><td>一屏可見筆數（約）</td><td>9</td><td>11</td><td>5～7</td><td>16</td></tr>
+    <tr><td>看得到圖片內容</td><td class="n">36 px 小圖</td><td class="n">36 px 小圖</td><td class="y">96 px 大縮圖</td><td class="n">20 px</td></tr>
+    <tr><td>看得到長文字內容</td><td class="n">1 行</td><td class="n">1 行</td><td class="y">3 行</td><td class="n">1 行</td></tr>
+    <tr><td>釘選 / 刪除</td><td>懸停按鈕</td><td>懸停按鈕（2 顆）</td><td>懸停按鈕（2 顆）</td><td>右鍵選單</td></tr>
+    <tr><td>改動量</td><td>—</td><td class="y">小</td><td>中（清單元件重做）</td><td>中</td></tr>
+  </table>
+
+  <h2>3. 統一元件（三個方向共用）</h2>
+  <p class="note">不管選哪個方向，都把元件收斂成下面這幾種，所有畫面只用它們組合。數值沿用 Fluent 規範：控制項圓角 4 px、浮層 8 px、32 px 高、字級 Body 14 / Caption 12。</p>
+  <div class="sheet">
+    <div class="spec">
+      <h3>1　輸入框</h3>
+      <div class="demo"><div class="search">搜尋…<i class="ic">&#xE721;</i></div><div style="height:8px"></div><div class="search focus"><span style="color:var(--text)">驗收</span><i class="ic">&#xE721;</i></div></div>
+      <ul><li>32 px 高，取得焦點底部 2 px 強調色</li><li>搜尋框、熱鍵錄製共用</li></ul>
+    </div>
+    <div class="spec">
+      <h3>2　圖示按鈕</h3>
+      <div class="demo" style="display:flex;gap:6px"><i class="ic ibtn">&#xE712;</i><i class="ic ibtn" style="background:var(--subtle)">&#xE712;</i><i class="ic ibtn" style="background:var(--subtle);color:var(--accent)">&#xE718;</i></div>
+      <ul><li>32 × 32，平常透明、懸停淡底、開啟時強調色</li><li>列內小版 24 × 24</li><li>全 App 只有這一種按鈕形狀（對話框的文字按鈕除外）</li></ul>
+    </div>
+    <div class="spec">
+      <h3>3　清單列</h3>
+      <div class="demo" style="padding:4px 0"><div class="row hover"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">把 Shelf 解除安裝</div><div class="s"><i class="app code"></i>1 小時前</div></div></div></div>
+      <ul><li>一種列、三種左側：文字圖示 / 檔案系統圖示 / 圖片縮圖</li><li>懸停：內縮 4 px 圓角淡底</li><li>釘選：標題右邊小圖釘，不再用色條</li></ul>
+    </div>
+    <div class="spec">
+      <h3>4　選單（⋯、右鍵、系統匣共用）</h3>
+      <div class="demo" style="background:transparent;padding:0"><div class="menu">
+        <div><span>釘住視窗</span><span></span></div><div class="hover"><span>設定…</span><span></span></div><hr><div class="danger"><span>清空未釘選</span><span></span></div>
+      </div></div>
+      <ul><li>8 px 圓角、懸停淡底、32 px 列高</li><li>危險動作紅字、放最下面、隔線分開</li></ul>
+    </div>
+    <div class="spec">
+      <h3>5　分頁（A 方向）</h3>
+      <div class="demo" style="padding:0"><div class="tabs" style="border:0"><span class="tab on">全部</span><span class="tab">檔案</span><span class="tab">文字</span><span class="tab">圖片</span></div></div>
+      <ul><li>文字 + 16 × 3 px 強調色短線，切換時滑過去</li></ul>
+    </div>
+    <div class="spec">
+      <h3>6　回饋</h3>
+      <div class="demo" style="display:flex;align-items:center;gap:12px"><i class="ball" style="position:static;width:44px;height:44px;font-size:18px">&#xE73E;</i><span style="color:var(--text2);font-size:12.5px">單擊複製後，球上的圖示短暫變成 ✓（取代狀態列的「已複製」）</span></div>
+      <ul><li>錯誤訊息（檔案已不存在等）改用球旁邊的小提示泡泡</li></ul>
+    </div>
+  </div>
+
+  <h2>4. 要你決定的</h2>
+  <ol class="note" style="padding-left:20px;line-height:1.9">
+    <li>選哪個方向：A、B、C，或混搭（例如「A 的頂部 + C 的清單」）</li>
+    <li>次行要不要保留<b>來源程式</b>：A / B 用小圖示顯示，C 完全不顯示</li>
+    <li>「複製」懸停按鈕拿掉可以嗎？（單擊整列就是複製）</li>
+  </ol>
+</div>
+</body>
+</html>

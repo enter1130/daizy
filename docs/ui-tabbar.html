@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 底部分頁列</title>
+<style>
+  :root{
+    --page:#e9e9e9; --panel:#f9f9f9; --border:#dcdcdc; --divider:#e5e5e5;
+    --control:#fff; --control-stroke:#e5e5e5; --subtle:#ededed; --bar:#ffffff;
+    --text:#1a1a1a; --text2:#5f5f5f; --text3:#8a8a8a;
+    --accent:#8e3fa8; --accent-soft:#f1e3f6; --caution:#9d5d00; --brand:#c4314b;
+    --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; --icons:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  }
+  :root.dark{
+    --page:#1a1a1a; --panel:#2c2c2c; --border:#404040; --divider:#3d3d3d;
+    --control:#373737; --control-stroke:#454545; --subtle:#383838; --bar:#363636;
+    --text:#fff; --text2:#c5c5c5; --text3:#9a9a9a;
+    --accent:#d9a3e6; --accent-soft:#4a3552; --caution:#fce100;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1200px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  p{color:var(--text2);margin:0 0 16px;max-width:880px}
+  .btn{font:inherit;color:var(--text);background:var(--control);border:1px solid var(--control-stroke);border-radius:4px;padding:5px 14px;cursor:pointer;margin-bottom:18px}
+  .ic{font-family:var(--icons);font-style:normal;line-height:1}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;align-items:start}
+  .cap{font-weight:600;margin:0 0 4px}
+  .sub{font-size:12.5px;color:var(--text2);margin:0 0 12px;min-height:38px}
+  .stage{position:relative;width:300px;padding-bottom:74px}
+
+  .panel{width:300px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.18);display:flex;flex-direction:column}
+  .list{padding:6px 0 4px}
+  .row{display:flex;align-items:center;gap:12px;margin:2px 4px;padding:8px;border-radius:4px}
+  .row.hover{background:var(--subtle)}
+  .tile{width:36px;height:36px;border-radius:4px;background:var(--control);border:1px solid var(--control-stroke);display:grid;place-items:center;color:var(--text2);font-family:var(--icons);font-size:15px;flex:none;overflow:hidden}
+  .tile.img{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);border:0}
+  .tile.img2{background:linear-gradient(160deg,#9be7c4,#3aa17e 60%,#1d5c48);border:0}
+  .tile.xls{color:#2e8b57}
+  .meta{flex:1;min-width:0}
+  .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+  .app{width:14px;height:14px;border-radius:3px;display:inline-block}
+  .app.code{background:#2f80ed}.app.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c)}.app.snip{background:#7c5fd6}.app.exp{background:#f5c342}
+  .pin{color:var(--caution);font-family:var(--icons);font-size:12px}
+  mark{background:var(--accent-soft);color:inherit;border-radius:2px;padding:0 1px}
+
+  /* 底部分頁列：和面板同樣 8 px 圓角，內部元素 4 px */
+  .dock{margin:6px 8px 8px;background:var(--bar);border:1px solid var(--control-stroke);border-radius:8px;
+        display:flex;align-items:center;padding:4px;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .tab{flex:1;height:46px;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text2)}
+  .tab .ic{font-size:16px}
+  .tab .lb{font-size:11px}
+  .tab.on{background:var(--accent-soft);color:var(--accent)}
+  .tab.on .lb{font-weight:600}
+  .tab.search{flex:none;width:46px}
+  .tab.search .ic{font-size:17px}
+
+  /* 搜尋狀態：分頁列變成搜尋框 + ✕ */
+  .dock.searching{gap:6px}
+  .sfield{flex:1;height:46px;border-radius:4px;background:var(--control);border:1px solid var(--accent);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--text)}
+  .sfield .ic{color:var(--text2);font-size:15px}
+  .caret{display:inline-block;width:1px;height:16px;background:var(--text);margin-left:-6px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .xbtn{width:46px;height:46px;border-radius:4px;background:var(--subtle);display:grid;place-items:center;color:var(--text);font-family:var(--icons);font-size:13px;flex:none}
+  .chips{display:flex;gap:6px;padding:8px 10px 2px;font-size:12px}
+  .chip{border:1px solid var(--control-stroke);border-radius:999px;padding:2px 10px;color:var(--text2)}
+  .chip.on{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+
+  .ball{position:absolute;right:0;bottom:0;width:56px;height:56px}
+  .menu{position:absolute;right:62px;bottom:6px;width:200px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:14px}
+  .menu div{padding:6px 10px;border-radius:4px;display:flex;justify-content:space-between}
+  .menu div.hover{background:var(--subtle)}
+  .menu div span:last-child{color:var(--text2);font-size:12px}
+  .menu hr{border:0;border-top:1px solid var(--divider);margin:4px 0}
+  .menu .danger{color:#c42b1c}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="logo" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="24" fill="#c4314b"/>
+    <rect x="15" y="7" width="15" height="20" rx="3" fill="#fff" transform="rotate(-9 22 17)"/>
+    <rect x="19.5" y="10.5" width="7" height="2.4" rx="1.2" fill="#c4314b" opacity=".55" transform="rotate(-9 22 17)"/>
+    <path d="M11 21h26v9.5a3 3 0 0 1-1.6 2.7L24 39.4l-11.4-6.2A3 3 0 0 1 11 30.5z" fill="#8d2336"/>
+    <path d="M11 21h26" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Shelf 底部分頁列</h1>
+  <p>參考 App Store 的分頁列：頂部完全拿掉，清單直接從最上面開始；底部一條分頁列（和面板同樣的圓角）「全部 · 文字 · 圖片 · 檔案 · 搜尋」，選中的有淡色圓角底。面板開在球的上方，分頁列就在球旁邊、手最近的地方。</p>
+  <button class="btn" onclick="document.documentElement.classList.toggle('dark')">切換淺色 / 深色</button>
+
+  <div class="grid">
+    <div>
+      <div class="cap">1　平常（全部）</div>
+      <div class="sub">頂部沒有任何東西。滑鼠停在第二筆上時，右側出現釘選、刪除。</div>
+      <div class="stage">
+        <div class="panel">
+          <div class="list">
+            <div class="row"><div class="tile xls">&#xE8A5;</div><div class="meta"><div class="t">驗收清單_2026Q4.xlsx</div><div class="s"><i class="app exp"></i>昨天 16:20</div></div><i class="pin">&#xE840;</i></div>
+            <div class="row hover"><div class="tile img"></div><div class="meta"><div class="t">圖片 1920×1080</div><div class="s"><i class="app snip"></i>3 分鐘前</div></div><span class="ic" style="color:var(--text2);font-size:12px;letter-spacing:12px">&#xE718;&#xE74D;</span></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">起來了，也登錄好了（4 顆</div><div class="s"><i class="app code"></i>12 分鐘前</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">https://intranet.example.com/isms/IT437</div><div class="s"><i class="app edge"></i>25 分鐘前</div></div></div>
+          </div>
+          <div class="dock">
+            <div class="tab on"><i class="ic">&#xE71D;</i><span class="lb">全部</span></div>
+            <div class="tab"><i class="ic">&#xE8E4;</i><span class="lb">文字</span></div>
+            <div class="tab"><i class="ic">&#xE91B;</i><span class="lb">圖片</span></div>
+            <div class="tab"><i class="ic">&#xE8B7;</i><span class="lb">檔案</span></div>
+            <div class="tab search"><i class="ic">&#xE721;</i></div>
+          </div>
+        </div>
+        <svg class="ball"><use href="#logo"/></svg>
+      </div>
+    </div>
+
+    <div>
+      <div class="cap">2　切到「圖片」</div>
+      <div class="sub">選中的膠囊底滑到「圖片」（約 0.2 秒），清單只剩圖片。</div>
+      <div class="stage">
+        <div class="panel">
+          <div class="list">
+            <div class="row"><div class="tile img"></div><div class="meta"><div class="t">圖片 1920×1080</div><div class="s"><i class="app snip"></i>3 分鐘前</div></div></div>
+            <div class="row"><div class="tile img2"></div><div class="meta"><div class="t">圖片 800×600</div><div class="s"><i class="app edge"></i>1 小時前</div></div></div>
+          </div>
+          <div class="dock">
+            <div class="tab"><i class="ic">&#xE71D;</i><span class="lb">全部</span></div>
+            <div class="tab"><i class="ic">&#xE8E4;</i><span class="lb">文字</span></div>
+            <div class="tab on"><i class="ic">&#xE91B;</i><span class="lb">圖片</span></div>
+            <div class="tab"><i class="ic">&#xE8B7;</i><span class="lb">檔案</span></div>
+            <div class="tab search"><i class="ic">&#xE721;</i></div>
+          </div>
+        </div>
+        <svg class="ball"><use href="#logo"/></svg>
+      </div>
+    </div>
+
+    <div>
+      <div class="cap">3　點「搜尋」之後</div>
+      <div class="sub">分頁列變成搜尋框，游標已在裡面可以直接打字，搜尋所有類型；✕ 或 Esc 回到分頁。按熱鍵叫出面板時直接是這個狀態。</div>
+      <div class="stage">
+        <div class="panel">
+          <div class="list">
+            <div class="row hover"><div class="tile xls">&#xE8A5;</div><div class="meta"><div class="t"><mark>驗收</mark>清單_2026Q4.xlsx</div><div class="s"><i class="app exp"></i>昨天 16:20</div></div></div>
+            <div class="row"><div class="tile">&#xE8E4;</div><div class="meta"><div class="t">本次<mark>驗收</mark>項目包含真空腔體…</div><div class="s"><i class="app code"></i>3 分鐘前</div></div></div>
+          </div>
+          <div class="dock searching">
+            <div class="sfield"><i class="ic">&#xE721;</i><span>驗收</span><span class="caret"></span></div>
+            <div class="xbtn">&#xE711;</div>
+          </div>
+        </div>
+        <svg class="ball"><use href="#logo"/></svg>
+      </div>
+    </div>
+
+    <div>
+      <div class="cap">4　右鍵點球</div>
+      <div class="sub">原本頂部「⋯」裡的東西搬到這裡；系統匣選單也有一樣的項目。</div>
+      <div class="stage" style="height:300px">
+        <div class="menu">
+          <div><span>✓ 釘住視窗</span><span></span></div>
+          <div class="hover"><span>設定…</span><span></span></div>
+          <div><span>暫停收集剪貼簿</span><span></span></div>
+          <hr>
+          <div class="danger"><span>清空未釘選…</span><span></span></div>
+          <hr>
+          <div><span>結束</span><span></span></div>
+        </div>
+        <svg class="ball"><use href="#logo"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

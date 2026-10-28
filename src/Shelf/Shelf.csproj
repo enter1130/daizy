@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Shelf</AssemblyName>
+    <RootNamespace>Shelf</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Shelf.ico</ApplicationIcon>
+    <Version>1.1.0</Version>
+    <Product>Shelf</Product>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- WFO1000 要求控制項的公開屬性標註設計工具序列化方式；本專案全部以程式碼建立 UI，不用設計工具 -->
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- 個人自用，機器上已有 .NET 10 Desktop Runtime：不打包 Runtime，exe 從 110 MB 降到 < 1 MB，記憶體相同 -->
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <!-- 不開 EnableCompressionInSingleFile：啟動時整包解壓到記憶體，私人工作集 9 → 74 MB -->
+    <!-- 不開 PublishReadyToRun：私人工作集多 3 MB，常駐程式不在乎那點啟動時間 -->
+  </PropertyGroup>
+
+</Project>

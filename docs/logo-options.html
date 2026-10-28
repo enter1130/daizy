@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 標誌設計</title>
+<style>
+  :root{ --page:#1a1a1a; --card:#2b2b2b; --text:#fff; --text2:#c5c5c5; --text3:#9a9a9a; --divider:#3d3d3d;
+         --accent:#a259c4; --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:40px 0 8px}
+  p{color:var(--text2);margin:0 0 14px;max-width:880px}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .sw{display:inline-block;width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;vertical-align:middle;margin-right:4px}
+  .sw.on{border-color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+  .opt{background:var(--card);border:1px solid #1c1c1c;border-radius:8px;padding:18px}
+  .opt h3{margin:0;font-size:15px;font-weight:600}
+  .opt .why{font-size:12.5px;color:var(--text2);margin:2px 0 14px;min-height:56px}
+  .hero{display:flex;justify-content:center;padding:6px 0 14px}
+  .row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .cap{font-size:11px;color:var(--text3);text-align:center;margin-top:6px}
+  .tb{display:flex;align-items:center;gap:12px;border-radius:6px;padding:8px 12px}
+  .tb.dark{background:#1c1c1c}.tb.light{background:#eee}
+  .desk{position:relative;height:150px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#2f3b52,#1d2538 55%,#0f1522)}
+  .desk .w{position:absolute;left:14px;top:14px;right:70px;bottom:14px;background:#272727;border-radius:6px}
+  .desk .b{position:absolute;right:14px;bottom:14px}
+  svg{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Shelf 標誌設計</h1>
+  <p>不用圖示字型，每個都是自己畫的幾何標誌，扁平風格（純色塊、無漸層、無光澤），只用「強調色 + 白 + 一階深色」。浮動球是圓形；程式圖示和系統匣用圓角方塊，和球區分又是同一個標誌。</p>
+  <div class="bar"><span style="color:var(--text2);font-size:13px">底色：</span><span id="swatches"></span></div>
+
+  <h2>標誌方案</h2>
+  <div class="grid" id="grid"></div>
+
+  <h2>放在桌面上的樣子</h2>
+  <p>浮動球 56 px，壓在深色桌面與視窗上。</p>
+  <div class="grid" id="desks"></div>
+</div>
+
+<script>
+  // 每個標誌畫在 48×48 的格子裡（不含底色）。W = 白、T = 白 60%、D = 深一階（黑 22%）、S = 實心深一階（擋住後面的東西用）
+  const W = '#fff', T = 'rgba(255,255,255,.6)', D = 'rgba(0,0,0,.22)';
+  const S = () => darken(accent, 0.28);
+  const marks = {
+    pocket: {
+      name: '1　口袋', why: '一張卡片插在口袋裡，露出上半截：「先收起來，等一下再拿」。塊面大，16 px 也清楚。',
+      svg: () => `<rect x="15" y="7" width="15" height="20" rx="3" fill="${W}" transform="rotate(-9 22 17)"/>
+            <rect x="19.5" y="10.5" width="7" height="2.4" rx="1.2" fill="${accent}" opacity=".55" transform="rotate(-9 22 17)"/>
+            <path d="M11 21h26v9.5a3 3 0 0 1-1.6 2.7L24 39.4l-11.4-6.2A3 3 0 0 1 11 30.5z" fill="${S()}"/>
+            <path d="M11 21h26" stroke="${W}" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M15.5 26.5h17" stroke="${W}" stroke-opacity=".35" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.6 2.6"/>`
+    },
+    shelf: {
+      name: '2　層板', why: '牆上一塊層板、兩個托架，上面擺著一本書、一個盒子、一顆球。直接對應「Shelf」，形狀各不相同所以不會像圖表。',
+      svg: () => `<rect x="11.5" y="13" width="5.5" height="17" rx="1.6" fill="${W}"/>
+            <rect x="18.5" y="20" width="10" height="10" rx="2.2" fill="${T}"/>
+            <circle cx="33.5" cy="25.5" r="4.5" fill="${W}"/>
+            <rect x="8" y="30" width="32" height="3.6" rx="1.8" fill="${W}"/>
+            <path d="M13 33.6h4.5l-4.5 5z M30.5 33.6H35l0 5z" fill="${W}" fill-opacity=".75"/>`
+    },
+    s: {
+      name: '3　S 緞帶', why: '兩段半圓接成 S，上下兩段用不同白度，像一條摺起的緞帶。最像品牌標誌，但看不出用途。',
+      svg: () => `<path d="M31 15.8A7.6 7.6 0 1 0 24 24" fill="none" stroke="${W}" stroke-width="6.2" stroke-linecap="round"/>
+            <path d="M24 24a7.6 7.6 0 1 1-7 8.2" fill="none" stroke="${T}" stroke-width="6.2" stroke-linecap="round"/>`
+    },
+    stack: {
+      name: '4　疊層', why: '三片菱形往上疊，像收集來的東西一層層放好。現代、俐落；16 px 時三層會比較擠。',
+      svg: () => `<path d="M24 27.5 9.5 21 24 14.5 38.5 21z" fill="${W}"/>
+            <path d="M12 26.2 24 31.6l12-5.4 2.5 1.2L24 34 9.5 27.4z" fill="${T}"/>
+            <path d="M12 32.2 24 37.6l12-5.4 2.5 1.2L24 40 9.5 33.4z" fill="${D}"/>`
+    },
+    drop: {
+      name: '5　微笑托盤', why: '本意是一顆圓點落進托盤（丟進來就收），結果剛好像一張笑臉。最親切、任何尺寸都清楚；缺點是偏可愛。',
+      svg: () => `<circle cx="24" cy="15.5" r="5.5" fill="${W}"/>
+            <path d="M11 24.5v4.5a9 9 0 0 0 9 9h8a9 9 0 0 0 9-9v-4.5" fill="none" stroke="${W}" stroke-width="4.2" stroke-linecap="round"/>`
+    },
+  };
+
+  function darken(hex, k) { const n = parseInt(hex.slice(1), 16); const c = s => Math.round(((n >> s) & 255) * (1 - k)); return `rgb(${c(16)},${c(8)},${c(0)})`; }
+  const accents = ['#a259c4', '#0f6cbd', '#0f7b6c', '#c4314b', '#3b3b3b'];
+  let accent = accents[0];
+
+  function logo(key, size, shape) {
+    const bg = shape === 'circle'
+      ? `<circle cx="24" cy="24" r="24" fill="${accent}"/>`
+      : `<rect width="48" height="48" rx="11" fill="${accent}"/>`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 48 48">${bg}${marks[key].svg()}</svg>`;
+  }
+
+  function render() {
+    document.getElementById('swatches').innerHTML = accents.map(c =>
+      `<span class="sw ${c === accent ? 'on' : ''}" style="background:${c}" onclick="accent='${c}';render()"></span>`).join(' ');
+    document.getElementById('grid').innerHTML = Object.keys(marks).map(k => `
+      <div class="opt">
+        <h3>${marks[k].name}</h3><div class="why">${marks[k].why}</div>
+        <div class="hero">${logo(k, 120, 'circle')}</div>
+        <div class="row">
+          <div>${logo(k, 56, 'circle')}<div class="cap">浮動球</div></div>
+          <div>${logo(k, 48, 'square')}<div class="cap">程式圖示</div></div>
+          <div><div class="tb dark">${logo(k, 16, 'square')}${logo(k, 24, 'square')}</div><div class="cap">系統匣 深</div></div>
+          <div><div class="tb light">${logo(k, 16, 'square')}${logo(k, 24, 'square')}</div><div class="cap">系統匣 淺</div></div>
+        </div>
+      </div>`).join('');
+    document.getElementById('desks').innerHTML = Object.keys(marks).map(k => `
+      <div><div class="desk"><div class="w"></div><div class="b">${logo(k, 56, 'circle')}</div></div><div class="cap">${marks[k].name}</div></div>`).join('');
+  }
+  render();
+</script>
+</body>
+</html>
