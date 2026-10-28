@@ -662,6 +662,12 @@ sealed class ShelfForm : Form
             return;
         }
         if (item is not null) _store.Add(item);
+        // 收進來的時候面板多半收著：圖片編碼、縮圖用掉的記憶體，閒置 2 秒後一樣釋放（不然要等下次開關面板）
+        if (!_showing)
+        {
+            _trimTimer.Stop();
+            _trimTimer.Start();
+        }
     }
 
     // ── 使用（F7、F9、F10）──
