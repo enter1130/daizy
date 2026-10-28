@@ -1,6 +1,6 @@
 # Shelf
 
-桌面暫存架：一顆浮動球，收集拖入的檔案、自動收集剪貼簿的文字與圖片，隨時拖出或複製使用。個人自用。
+剪貼簿暫存架：按 Win+V 叫出（取代 Windows 的剪貼簿紀錄），點一下就貼上；也收集拖入的檔案，可隨時拖出。閒置時只佔約 1 MB 記憶體。個人自用。
 
 設計與實作細節見 [docs/開發文件.md](docs/開發文件.md)。
 
@@ -19,7 +19,7 @@
 
 ```powershell
 dotnet run --project src/Shelf                                         # 開發執行
-powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version 1.0.1   # 產生安裝檔
+powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version 1.2.0   # 產生安裝檔
 ```
 
 安裝檔輸出到 `artifacts\ShelfSetup-<版本>.exe`（約 33 MB）。需要 Inno Setup 6（`winget install JRSoftware.InnoSetup`）。
@@ -31,17 +31,16 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version 1.0.1   # 
 
 | 操作 | 結果 |
 |---|---|
-| 點一下浮動球 / `Win+Alt+V` | 在球上方展開面板；熱鍵叫出時可以直接打字搜尋 |
-| 拖動球 | 移到放開的位置並記住 |
-| 拖檔案、文字、圖片到球或面板上 | 收進來 |
+| `Win+V`（可在設定改成自訂熱鍵） | 在文字游標旁開啟，直接打字搜尋 |
+| 單擊項目 / `Enter` | 貼到原本的程式（只想複製：右鍵 →「複製」） |
+| 點分類（全部 · 文字 · 圖片 · 檔案） | 篩選 |
 | 任何程式按 `Ctrl+C` | 自動收進來（密碼管理員標記的內容、捷徑 `.lnk` 不收） |
-| 單擊項目 | 複製到剪貼簿，回原程式按 `Ctrl+V` 貼上 |
+| 拖檔案、文字、圖片到面板（或浮動球）上 | 收進來 |
 | 按住項目拖曳 | 拖到其他程式 |
-| 搜尋框 `↑` `↓` `Enter` | 選取並複製，面板收起 |
 | 右鍵項目 | 複製、釘選、開啟所在資料夾、另存新檔、刪除 |
 | 點面板外面 / `Esc` | 收起面板 |
 
-系統匣圖示右鍵可暫停收集、開設定、開資料夾、結束。
+浮動球預設隱藏，可在設定或系統匣選單打開。系統匣圖示右鍵可暫停收集、開設定、開資料夾、結束。
 
 ## 資料
 
@@ -49,6 +48,7 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version 1.0.1   # 
 
 ## 已知限制
 
-- 以系統管理員身分執行的視窗，無法拖放進 Shelf（Windows 的 UIPI 限制）。改用單擊複製再貼上。
-- 含 Win 鍵、且 Windows 自己已在用的組合（例如 `Win+S`），無法設為熱鍵。
+- 以系統管理員身分執行的視窗（Windows 的 UIPI 限制）：無法拖放進 Shelf；點一下只會複製、不會自動貼上，要自己按 `Ctrl+V`。
+- 含 Win 鍵、且 Windows 自己已在用的組合（例如 `Win+S`），無法設為自訂熱鍵（`Win+V` 例外，用專門的方式取代）。
+- 注音 / 拼音輸入法開著時，搜尋框打的字先停在選字框，`Enter` 是確認選字。
 - 兩個螢幕縮放比例不同時，未特別處理（目前使用環境兩螢幕皆 150%）。
