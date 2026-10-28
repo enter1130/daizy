@@ -10,7 +10,7 @@
     <RootNamespace>Shelf</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Shelf.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>Shelf</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- WFO1000 要求控制項的公開屬性標註設計工具序列化方式；本專案全部以程式碼建立 UI，不用設計工具 -->
