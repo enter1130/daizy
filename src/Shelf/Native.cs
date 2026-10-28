@@ -45,6 +45,7 @@ static class Native
     // ── 分層視窗（浮動球的逐像素透明）──
 
     public const int WS_EX_LAYERED = 0x00080000;
+    public const int WS_EX_TRANSPARENT = 0x00000020;   // 滑鼠穿透（抽屜外框層）
     public const uint ULW_ALPHA = 0x02;
     public const uint LWA_ALPHA = 0x02;
 
@@ -53,6 +54,7 @@ static class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetLayeredWindowAttributes(IntPtr hwnd, int crKey, byte bAlpha, uint dwFlags);
     public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
     public const uint SWP_NOZORDER = 0x0004;
 
     [StructLayout(LayoutKind.Sequential)]

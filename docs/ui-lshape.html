@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelf 融合抽屜</title>
+<style>
+  :root{
+    --page:#e9e9e9; --panel:#f9f9f9; --border:#dcdcdc; --control:#fff; --control-stroke:#e5e5e5; --subtle:#ededed; --divider:#ececec;
+    --text:#1a1a1a; --text2:#5f5f5f; --accent:#8e3fa8; --accent-soft:#f0e3f5;
+    --desk1:#cfd8e6; --desk2:#aebbd0; --win:#ffffff;
+    --font:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif; --icons:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  }
+  :root.dark{
+    --page:#1a1a1a; --panel:#2c2c2c; --border:#404040; --control:#373737; --control-stroke:#454545; --subtle:#383838; --divider:#363636;
+    --text:#fff; --text2:#c5c5c5; --accent:#d9a3e6; --accent-soft:#4a3552;
+    --desk1:#2f3b52; --desk2:#141b2a; --win:#272727;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font:14px/1.5 var(--font);padding:28px 20px 60px}
+  .wrap{max-width:1360px;margin:0 auto}
+  h1{font-size:24px;font-weight:600;margin:0 0 4px}
+  h2{font-size:18px;font-weight:600;margin:36px 0 6px}
+  p{color:var(--text2);margin:0 0 14px;max-width:920px}
+  .bar-btns{display:flex;gap:8px;margin:4px 0 18px}
+  .btn{font:inherit;color:var(--text);background:var(--control);border:1px solid var(--control-stroke);border-radius:4px;padding:5px 14px;cursor:pointer}
+  .ic{font-family:var(--icons);font-style:normal;line-height:1}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:24px}
+  .cap{font-weight:600;margin:0 0 2px}
+  .sub{font-size:12.5px;color:var(--text2);margin:0 0 10px}
+
+  .desk{position:relative;width:420px;height:560px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,var(--desk1),var(--desk2))}
+  .desk .w{position:absolute;inset:24px 28px 60px 24px;background:var(--win);border-radius:8px;opacity:.55}
+  .desk .tb{position:absolute;left:0;right:0;bottom:0;height:40px;background:rgba(32,32,32,.85)}
+
+  /* 一整塊：SVG 畫外形（含月牙凹口）、內容疊在上面並依外形裁切，陰影跟著外形走 */
+  .drawer{position:absolute;filter:drop-shadow(0 8px 20px rgba(0,0,0,.22))}
+  .drawer svg.shape{position:absolute;inset:0;overflow:visible}
+  .drawer .shape path{fill:var(--panel);stroke:var(--border);stroke-width:1}
+  .inner{position:absolute;inset:0}
+
+  .rows{position:absolute;left:0;right:0;padding:0}
+  .row{display:flex;align-items:center;gap:12px;margin:2px 8px;padding:8px 10px;border-radius:14px}
+  .row.hover{background:var(--subtle)}
+  .tile{width:36px;height:36px;border-radius:10px;background:var(--control);border:1px solid var(--control-stroke);display:grid;place-items:center;color:var(--text2);font-family:var(--icons);font-size:15px;flex:none;overflow:hidden}
+  .tile.img{background:linear-gradient(135deg,#f7b267,#f4845f 50%,#5c4b8a);border:0}
+  .tile.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c);border:0}
+  .tile.xls{color:#2e8b57}
+  .meta{flex:1;min-width:0}
+  .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+  .app{width:14px;height:14px;border-radius:3px;display:inline-block}
+  .app.code{background:#2f80ed}.app.folder{background:#f5c342}.app.snip{background:#7c5fd6}.app.edge{background:linear-gradient(135deg,#35c1f1,#1f8a4c)}
+  .acts{color:var(--text2);font-family:var(--icons);font-size:12px;letter-spacing:12px}
+  mark{background:var(--accent-soft);color:inherit;border-radius:2px;padding:0 1px}
+
+  /* 分類列：抽屜的底部（或頂部）那一排，和清單之間只有一條淡分隔線 */
+  .tabs{position:absolute;height:56px;display:flex;align-items:center;gap:2px;padding:5px 6px}
+  .tabs.sep-top{border-top:1px solid var(--divider)}
+  .tabs.sep-bottom{border-bottom:1px solid var(--divider)}
+  /* 只有圖示（文字拿掉，滑鼠移上去才顯示提示），按鈕變窄，最後的 🔍 離凹口更遠 */
+  .tab{flex:1;max-width:56px;height:40px;border-radius:999px;display:grid;place-items:center;color:var(--text2);position:relative}
+  .tab .ic{font-size:17px}.tab .lb{display:none}
+  .tab.on{background:var(--accent-soft);color:var(--accent)}
+  .tab.search{flex:none;width:40px;margin-left:auto}
+  .tab.tip::after{content:attr(data-tip);position:absolute;bottom:46px;left:50%;transform:translateX(-50%);white-space:nowrap;
+                  font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:2px 8px;
+                  box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  .sfield{flex:1;height:44px;border-radius:999px;background:var(--control);border:1px solid var(--accent);display:flex;align-items:center;gap:8px;padding:0 14px}
+  .sfield .ic{color:var(--text2)}
+  .caret{display:inline-block;width:1px;height:16px;background:var(--text);margin-left:-6px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .xbtn{width:44px;height:44px;border-radius:50%;background:var(--subtle);display:grid;place-items:center;font-family:var(--icons);font-size:13px;flex:none}
+
+  .ball{position:absolute;width:56px;height:56px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.35))}
+
+  /* 展開動畫：從球的位置長出來 */
+  .play .drawer{animation:grow .28s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes grow{from{transform:scale(.2);opacity:0}to{transform:none;opacity:1}}
+
+  .spec{font-size:13px;width:100%;border-collapse:collapse;margin-top:8px}
+  .spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--control-stroke);vertical-align:top}
+  .spec th{color:var(--text2);font-weight:600}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="logo" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="24" fill="#c4314b"/>
+    <rect x="15" y="7" width="15" height="20" rx="3" fill="#fff" transform="rotate(-9 22 17)"/>
+    <rect x="19.5" y="10.5" width="7" height="2.4" rx="1.2" fill="#c4314b" opacity=".55" transform="rotate(-9 22 17)"/>
+    <path d="M11 21h26v9.5a3 3 0 0 1-1.6 2.7L24 39.4l-11.4-6.2A3 3 0 0 1 11 30.5z" fill="#8d2336"/>
+    <path d="M11 21h26" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Shelf 融合抽屜</h1>
+  <p>內容清單和分類列<b>融合成一整塊抽屜</b>：清單在上、分類列在底部，中間只有一條淡分隔線。抽屜靠球的那個角挖出月牙凹口，球嵌在裡面，球的外緣和抽屜切齊。</p>
+  <div class="bar-btns">
+    <button class="btn" onclick="replay()">▶ 重播展開動畫</button>
+    <button class="btn" onclick="document.documentElement.classList.toggle('dark')">切換淺色 / 深色</button>
+  </div>
+
+  <h2>球在三種位置</h2>
+  <div class="grid" id="corners"></div>
+
+  <h2>點 🔍 之後</h2>
+  <div class="grid" id="search"></div>
+
+  <h2>幾何規格</h2>
+  <table class="spec">
+    <tr><th>部件</th><th>規格（以球在右下為例，單位：邏輯像素）</th></tr>
+    <tr><td>球</td><td>56 × 56。右緣、下緣和抽屜切齊</td></tr>
+    <tr><td>抽屜</td><td>寬 340，高度跟著筆數。上面兩角 22 px 圓角；左下角 28 px 圓角（和分類列高度一半一致，像膠囊的一端）</td></tr>
+    <tr><td>月牙凹口</td><td>圓心 = 球心，半徑 36（球半徑 28 + 間隙 8）。挖掉抽屜右下角，兩個尖角修圓</td></tr>
+    <tr><td>分類列</td><td>抽屜底部 56 高，和球同一排；只有圖示（40 × 40 膠囊），滑鼠移上去顯示文字提示；🔍 靠右，離凹口至少 18 px；上方一條淡分隔線</td></tr>
+  </table>
+</div>
+
+<script>
+  const BALL = 56, BR = BALL / 2, GAP = 8, CUT = BR + GAP;   // 凹口半徑 36
+  const TAB_H = 56, DW = 340, R_TOP = 22, R_FOOT = TAB_H / 2;
+  const HORN = Math.sqrt(CUT * CUT - BR * BR);              // 凹口和抽屜邊緣交點離球心 22.63
+
+  const deg = Math.PI / 180;
+  const pt = (cx, cy, r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+
+  // 抽屜外形（球在右下的座標）。球心在 (w - BR, h - BR)，凹口沿半徑 CUT 的圓挖掉右下角。
+  // 凹口和右緣交在球心上方 HORN、和底緣交在球心左方 HORN；兩個尖角各修圓約 6°
+  function drawerPath(w, h) {
+    const cx = w - BR, cy = h - BR;
+    const aRight = Math.atan2(-HORN, BR), aBottom = Math.atan2(BR, -HORN);
+    const [rx, ry] = pt(cx, cy, CUT, aRight - 6 * deg);
+    const [bx, by] = pt(cx, cy, CUT, aBottom + 6 * deg);
+    return `M ${R_TOP} 0 L ${w - R_TOP} 0 A ${R_TOP} ${R_TOP} 0 0 1 ${w} ${R_TOP}
+            L ${w} ${cy - HORN - 4} Q ${w} ${cy - HORN} ${rx} ${ry}
+            A ${CUT} ${CUT} 0 1 0 ${bx} ${by}
+            Q ${cx - HORN} ${h} ${cx - HORN - 4} ${h}
+            L ${R_FOOT} ${h} A ${R_FOOT} ${R_FOOT} 0 0 1 0 ${h - R_FOOT}
+            L 0 ${R_TOP} A ${R_TOP} ${R_TOP} 0 0 1 ${R_TOP} 0 Z`;
+  }
+  const flip = (w, h, fx, fy) => `translate(${fx ? w : 0} ${fy ? h : 0}) scale(${fx ? -1 : 1} ${fy ? -1 : 1})`;
+
+  const rows = (q) => {
+    const all = [
+      ['edge', '', '喚醒企業大腦_UTI.html', 'folder', '2 分鐘前', true],
+      ['', '&#xE8E4;', '本次驗收項目包含真空腔體、渦輪分子幫浦…', 'code', '2 分鐘前'],
+      ['img', '', '圖片 1920×1080', 'snip', '15 分鐘前'],
+      ['xls', '&#xE8A5;', '驗收清單_2026Q4.xlsx', 'folder', '昨天 16:20'],
+      ['', '&#xE8E4;', 'https://intranet.example.com/isms/IT437', 'edge', '昨天 09:12'],
+    ].filter(r => !q || r[2].includes(q));
+    return [all.length, all.map(([cls, glyph, t, app, when, hover]) => `
+      <div class="row ${hover && !q ? 'hover' : ''}"><div class="tile ${cls}">${glyph}</div>
+        <div class="meta"><div class="t">${q ? t.replace(q, `<mark>${q}</mark>`) : t}</div><div class="s"><i class="app ${app}"></i>${when}</div></div>
+        ${hover && !q ? '<span class="acts">&#xE718;&#xE74D;</span>' : ''}</div>`).join('')];
+  };
+  const tabsHtml = (searching) => searching
+    ? `<div class="sfield"><i class="ic">&#xE721;</i><span>驗收</span><span class="caret"></span></div><div class="xbtn">&#xE711;</div>`
+    : `<div class="tab on" data-tip="全部"><i class="ic">&#xE71D;</i></div>
+       <div class="tab" data-tip="文字"><i class="ic">&#xE8E4;</i></div>
+       <div class="tab ${tipDemo ? 'tip' : ''}" data-tip="圖片"><i class="ic">&#xE91B;</i></div>
+       <div class="tab" data-tip="檔案"><i class="ic">&#xE8B7;</i></div>
+       <div class="tab search" data-tip="搜尋"><i class="ic">&#xE721;</i></div>`;
+  let tipDemo = false;   // 第一張示意圖示範「滑鼠停在圖片上」的提示
+
+  let clipId = 0;
+  function layout(corner, searching) {
+    const W = 420, DH = 520;
+    const right = corner.includes('right'), bottom = corner.includes('bottom');
+    const bx = right ? W - BALL - 16 : 16, by = bottom ? DH - BALL - 16 : 16;
+
+    const [n, rowsHtml] = rows(searching ? '驗收' : '');
+    const listH = n * 56 + 16, h = listH + TAB_H;
+    // 球的外緣和抽屜切齊
+    const x = right ? bx + BALL - DW : bx;
+    const y = bottom ? by + BALL - h : by;
+    const tabsW = DW - (BR + HORN + GAP) - 14;             // 分類列止於凹口前，留足空間不被弧度擠到
+    const id = `clip${clipId++}`, t = flip(DW, h, !right, !bottom);
+    return `
+      <div class="desk"><div class="w"></div><div class="tb"></div>
+        <div class="drawer" style="left:${x}px;top:${y}px;width:${DW}px;height:${h}px;transform-origin:${right ? 'right' : 'left'} ${bottom ? 'bottom' : 'top'}">
+          <svg class="shape" width="${DW}" height="${h}">
+            <defs><clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path d="${drawerPath(DW, h)}" transform="${t}"/></clipPath></defs>
+            <path d="${drawerPath(DW, h)}" transform="${t}"/>
+          </svg>
+          <div class="inner" style="clip-path:url(#${id})">
+            <div class="rows" style="top:${bottom ? 8 : TAB_H + 8}px">${rowsHtml}</div>
+            <div class="tabs ${bottom ? 'sep-top' : 'sep-bottom'}" style="${bottom ? 'bottom:0' : 'top:0'};${right ? 'left:0' : 'right:0'};width:${tabsW}px">${tabsHtml(searching)}</div>
+          </div>
+        </div>
+        <svg class="ball" style="left:${bx}px;top:${by}px"><use href="#logo"/></svg>
+      </div>`;
+  }
+
+  const corners = [
+    ['bottom-right', '球在右下', '最常見的位置：抽屜往左上展開，分類列在底部、和球同一排。'],
+    ['bottom-left', '球在左下', '整個左右翻轉。'],
+    ['top-right', '球在右上', '上面沒空間：抽屜往下展開，分類列改到頂部、仍和球同一排。'],
+  ];
+  document.getElementById('corners').innerHTML = corners.map(([c, cap, sub], i) => {
+    tipDemo = i === 0;
+    return `<div><div class="cap">${cap}</div><div class="sub">${sub}</div><div class="play-target">${layout(c, false)}</div></div>`;
+  }).join('');
+  tipDemo = false;
+  document.getElementById('search').innerHTML =
+    `<div><div class="cap">搜尋中（球在右下）</div><div class="sub">分類列變成搜尋框 + ✕，清單只剩符合的兩筆，抽屜跟著變矮。</div><div class="play-target">${layout('bottom-right', true)}</div></div>`;
+
+  function replay() {
+    document.querySelectorAll('.play-target').forEach(el => { el.classList.remove('play'); void el.offsetWidth; el.classList.add('play'); });
+  }
+  if (location.hash !== '#static') replay();   // #static：不播動畫（截圖用）
+</script>
+</body>
+</html>

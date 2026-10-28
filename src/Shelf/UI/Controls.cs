@@ -118,12 +118,13 @@ class InputBox : PaintedControl
 
 enum Filter { All, Text, Image, File }
 
-/// 底部分頁列（參考 App Store）：全部 · 文字 · 圖片 · 檔案 · 🔍。
-/// 外框和面板同樣 8 px 圓角；選中的分頁有淡強調色底，切換時滑過去。
-/// 點 🔍 進入搜尋：整條變成搜尋框 + ✕，搜尋所有類型；✕ 回到分頁。
+/// 分類列：融合抽屜的底部（球在上方時是頂部）那一排，和球同一排、同高 56。
+/// 只有圖示（全部 · 文字 · 圖片 · 檔案），🔍 在最外側；滑鼠停一下顯示文字提示。選中的是淡強調色膠囊，切換時滑過去。
+/// 點 🔍 進入搜尋：整排變成膠囊搜尋框 + 圓形 ✕，搜尋所有類型；✕ 回到分頁。
+/// 靠球那一側要讓出月牙凹口的位置（NotchReserve），和清單之間一條淡分隔線。
 sealed class TabBar : PaintedControl
 {
-    const int SlideMs = 200, FadeMs = 120;
+    const int SlideMs = 200, FadeMs = 120, TipDelayMs = 500;
     const int SearchSlot = 4;   // _hover 用：0..3 是分頁，4 是 🔍 或 ✕
 
     static readonly (Filter Value, string Label, string Glyph)[] Tabs =
@@ -131,11 +132,13 @@ sealed class TabBar : PaintedControl
          (Filter.Image, "圖片", Theme.GlyphPhoto), (Filter.File, "檔案", Theme.GlyphFolder)];
 
     readonly System.Windows.Forms.Timer _timer = new() { Interval = Anim.TickMs };
+    readonly System.Windows.Forms.Timer _tipTimer = new() { Interval = TipDelayMs };
+    readonly ToolTip _tip = new() { ShowAlways = true };   // ShowAlways：面板沒被啟用（NOACTIVATE）也要能顯示
     readonly float[] _hot = new float[Tabs.Length + 1];
     Filter _value;
-    bool _searching;
-    int _hover = -1;
-    float _slide = 1, _fromX;   // 選中底從 _fromX 滑到目前分頁
+    bool _searching, _notchOnLeft, _separatorOnTop = true;
+    int _notchReserve, _hover = -1;
+    float _slide = 1, _fromX;   // 選中膠囊從 _fromX 滑到目前分頁
 
     public TabBar()
     {
@@ -145,9 +148,10 @@ sealed class TabBar : PaintedControl
         Input.Visible = false;
         Controls.Add(Input);
         Input.ActivationNeeded += () => ActivationNeeded?.Invoke();
-        Height = L(68);
+        Height = L(56);
         RefreshColors();
         _timer.Tick += (_, _) => Tick();
+        _tipTimer.Tick += (_, _) => ShowTip();
     }
 
     /// 搜尋框。點下去前先通知表單進鍵盤模式（拿掉 NOACTIVATE），才拿得到焦點
@@ -175,12 +179,21 @@ sealed class TabBar : PaintedControl
         }
     }
 
+    /// 依球的角落設定：凹口在哪一側、要讓出多寬；分隔線在上（分類列在底部）還是在下
+    public void SetNotch(bool onLeft, int reserve, bool separatorOnTop)
+    {
+        (_notchOnLeft, _notchReserve, _separatorOnTop) = (onLeft, reserve, separatorOnTop);
+        PerformLayout();
+        Invalidate();
+    }
+
     public void BeginSearch()
     {
         if (!_searching)
         {
             _searching = true;
             Input.Visible = true;
+            HideTip();
             PerformLayout();
             Invalidate();
         }
@@ -205,20 +218,32 @@ sealed class TabBar : PaintedControl
         Invalidate();
     }
 
-    // ── 版面 ──
+    // ── 版面：內容區扣掉凹口那一側；順序固定由左到右（全部 … 檔案，🔍 / ✕ 在最右），球在左邊也不鏡像 ──
 
-    Rectangle Bar => new(L(8), L(6), Width - L(16), Height - L(14));   // 分頁列外框
-    Rectangle Inner => Rectangle.Inflate(Bar, -L(4), -L(4));
-    Rectangle SideButton => new(Inner.Right - Inner.Height, Inner.Top, Inner.Height, Inner.Height);   // 🔍 或 ✕
+    Rectangle Content
+    {
+        get
+        {
+            int pad = L(8), left = (_notchOnLeft ? _notchReserve : 0) + pad;
+            int right = Width - (_notchOnLeft ? 0 : _notchReserve) - pad;
+            return new Rectangle(left, 0, Math.Max(0, right - left), Height);
+        }
+    }
+
+    int PillH => L(40);
+    int PillTop => (Height - PillH) / 2;
+
+    /// 🔍（搜尋時是 ✕）：最右邊
+    Rectangle SideButton => new(Content.Right - PillH, PillTop, PillH, PillH);
 
     Rectangle TabRect(int i)
     {
-        var inner = Inner;
-        int w = (inner.Width - SideButton.Width - L(2)) / Tabs.Length;
-        return new Rectangle(inner.Left + i * w, inner.Top, w, inner.Height);
+        var c = Content;
+        int w = Math.Min(L(56), (c.Width - PillH - L(8)) / Tabs.Length);
+        return new Rectangle(c.Left + i * w, PillTop, w, PillH);
     }
 
-    Rectangle Field => new(Inner.Left, Inner.Top, SideButton.Left - L(6) - Inner.Left, Inner.Height);
+    Rectangle Field => new(Content.Left, PillTop, SideButton.Left - L(8) - Content.Left, PillH);
 
     static int Index(Filter f) => Array.FindIndex(Tabs, t => t.Value == f);
 
@@ -228,8 +253,8 @@ sealed class TabBar : PaintedControl
     {
         base.OnLayout(e);
         var f = Field;
-        int left = f.Left + L(34);
-        Input.Bounds = new Rectangle(left, f.Top + (f.Height - Input.Height) / 2, Math.Max(0, f.Right - L(10) - left), Input.Height);
+        int left = f.Left + L(36);
+        Input.Bounds = new Rectangle(left, f.Top + (f.Height - Input.Height) / 2, Math.Max(0, f.Right - L(14) - left), Input.Height);
     }
 
     // ── 動畫 ──
@@ -248,6 +273,24 @@ sealed class TabBar : PaintedControl
         if (!active) _timer.Stop();
     }
 
+    // ── 提示文字：滑鼠停在圖示上 0.5 秒才出現 ──
+
+    void ShowTip()
+    {
+        _tipTimer.Stop();
+        if (_searching || _hover < 0) return;
+        var r = _hover == SearchSlot ? SideButton : TabRect(_hover);
+        string text = _hover == SearchSlot ? "搜尋" : Tabs[_hover].Label;
+        int y = _separatorOnTop ? r.Top - L(30) : r.Bottom + L(6);   // 往清單那一側冒出來
+        _tip.Show(text, this, r.Left + r.Width / 2 - L(14), y, 1500);
+    }
+
+    void HideTip()
+    {
+        _tipTimer.Stop();
+        _tip.Hide(this);
+    }
+
     // ── 滑鼠 ──
 
     int HitTest(Point p)
@@ -263,14 +306,25 @@ sealed class TabBar : PaintedControl
     {
         base.OnMouseMove(e);
         int i = HitTest(e.Location);
-        if (i != _hover) { _hover = i; _timer.Start(); }
+        if (i == _hover) return;
+        _hover = i;
+        _timer.Start();
+        HideTip();
+        if (i >= 0) _tipTimer.Start();
     }
 
-    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = -1; _timer.Start(); }
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        _hover = -1;
+        _timer.Start();
+        HideTip();
+    }
 
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
+        HideTip();
         // 點到搜尋框的空白處（圖示旁邊）也算點搜尋框
         if (_searching && e.Button == MouseButtons.Left && Field.Contains(e.Location))
         {
@@ -294,9 +348,14 @@ sealed class TabBar : PaintedControl
     {
         var g = e.Graphics;
         ClearBackground(g);
-        int inner = L(Theme.ControlRadius);
-        Draw.FillRounded(g, Theme.ControlFill, Bar, L(Theme.OverlayRadius));
-        Draw.StrokeRounded(g, Theme.ControlStroke, Bar, L(Theme.OverlayRadius));
+
+        // 和清單之間的淡分隔線（不畫進凹口那一側）
+        var c = Content;
+        using (var p = new Pen(Theme.Divider))
+        {
+            int y = _separatorOnTop ? 0 : Height - 1;
+            g.DrawLine(p, c.Left, y, c.Right, y);
+        }
 
         var side = SideButton;
         float sideHot = Anim.Ease(_hot[SearchSlot]);
@@ -304,35 +363,32 @@ sealed class TabBar : PaintedControl
         if (_searching)
         {
             var f = Field;
-            Draw.FillRounded(g, Theme.InputFocused, f, inner);
-            Draw.StrokeRounded(g, Theme.Accent, f, inner);
-            Draw.Glyph(g, Theme.GlyphSearch, Theme.Icon, new Rectangle(f.Left + L(8), f.Top, L(20), f.Height), Theme.TextSecondary);
-            Draw.FillRounded(g, Anim.Lerp(Theme.SubtleHover, Theme.SubtleStrong, sideHot), side, inner);
+            Draw.FillRounded(g, Theme.InputFocused, f, f.Height);
+            Draw.StrokeRounded(g, Theme.Accent, f, f.Height);
+            Draw.Glyph(g, Theme.GlyphSearch, Theme.Icon, new Rectangle(f.Left + L(10), f.Top, L(20), f.Height), Theme.TextSecondary);
+            Draw.FillRounded(g, Anim.Lerp(Theme.SubtleHover, Theme.SubtleStrong, sideHot), side, side.Height);
             Draw.Glyph(g, Theme.GlyphClose, Theme.IconSmall, side, Theme.Text);
             return;
         }
 
-        // 選中底：淡強調色，切換時滑過去
+        // 選中膠囊：淡強調色，切換時滑過去
         var selected = TabRect(Index(_value));
-        Draw.FillRounded(g, Anim.Lerp(Theme.ControlFill, Theme.Accent, 0.15f), selected with { X = (int)HighlightX() }, inner);
+        Draw.FillRounded(g, Anim.Lerp(Theme.Panel, Theme.Accent, 0.15f), selected with { X = (int)HighlightX() }, selected.Height);
 
         for (int i = 0; i < Tabs.Length; i++)
         {
             var r = TabRect(i);
             bool on = Tabs[i].Value == _value;
             float hot = Anim.Ease(_hot[i]);
-            if (!on && hot > 0) Draw.FillRounded(g, Anim.Lerp(Theme.ControlFill, Theme.SubtleHover, hot), r, inner);
-            var color = on ? Theme.Accent : Anim.Lerp(Theme.TextSecondary, Theme.Text, hot);
-            int glyphH = L(22), labelH = Theme.Caption.Height, top = r.Top + (r.Height - glyphH - labelH) / 2;
-            Draw.Glyph(g, Tabs[i].Glyph, Theme.Icon, new Rectangle(r.Left, top, r.Width, glyphH), color);
-            TextRenderer.DrawText(g, Tabs[i].Label, on ? Theme.CaptionStrong : Theme.Caption, new Rectangle(r.Left, top + glyphH, r.Width, labelH), color,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+            if (!on && hot > 0) Draw.FillRounded(g, Anim.Lerp(Theme.Panel, Theme.SubtleHover, hot), r, r.Height);
+            Draw.Glyph(g, Tabs[i].Glyph, Theme.IconMedium, r, on ? Theme.Accent : Anim.Lerp(Theme.TextSecondary, Theme.Text, hot));
         }
 
-        if (sideHot > 0) Draw.FillRounded(g, Anim.Lerp(Theme.ControlFill, Theme.SubtleHover, sideHot), side, inner);
-        Draw.Glyph(g, Theme.GlyphSearch, Theme.Icon, side, Anim.Lerp(Theme.TextSecondary, Theme.Text, sideHot));
+        if (sideHot > 0) Draw.FillRounded(g, Anim.Lerp(Theme.Panel, Theme.SubtleHover, sideHot), side, side.Height);
+        Draw.Glyph(g, Theme.GlyphSearch, Theme.IconMedium, side, Anim.Lerp(Theme.TextSecondary, Theme.Text, sideHot));
     }
 }
+
 
 
 /// 訊息列（Fluent InfoBar）：面板頂部，顯示錯誤或提醒，幾秒後由表單收起
