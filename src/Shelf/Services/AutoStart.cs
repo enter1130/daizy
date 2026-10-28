@@ -6,7 +6,16 @@ namespace Shelf.Services;
 static class AutoStart
 {
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    const string ValueName = "Shelf";
+    const string ValueName = Brand.Name;
+
+    /// 改名前的登錄值：有的話刪掉，改寫成新的名稱、指向目前的 exe
+    public static void MigrateLegacyValue()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        if (key?.GetValue(Brand.LegacyName) is not string) return;
+        key.DeleteValue(Brand.LegacyName, throwOnMissingValue: false);
+        key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
+    }
 
     /// 以登錄檔為準：安裝程式也可能寫入這個值，不能只看 settings.json
     public static bool IsEnabled()

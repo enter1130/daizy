@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="1.0.0.0" name="Shelf.app"/>
+  <assemblyIdentity version="1.0.0.0" name="Daizy.app"/>
 
   <!-- 不要求提權：以系統管理員執行會讓一般權限程式無法拖放進來（UIPI） -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">

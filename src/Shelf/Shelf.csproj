@@ -6,12 +6,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>Shelf</AssemblyName>
+    <AssemblyName>Daizy</AssemblyName>
     <RootNamespace>Shelf</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Shelf.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
-    <Product>Shelf</Product>
+    <Version>1.3.0</Version>
+    <Product>Daizy</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- 省記憶體（開發文件 1.3）：不要背景 GC 執行緒；不要 PGO 收集的剖析資料 -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>

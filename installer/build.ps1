@@ -1,4 +1,4 @@
-﻿# 產生安裝檔：artifacts\ShelfSetup-<版本>.exe
+﻿# 產生安裝檔：artifacts\DaizySetup-<版本>.exe
 # 用法：powershell -ExecutionPolicy Bypass -File installer\build.ps1 [-Version 1.0.1]
 param([string]$Version = "1.0.0")
 $ErrorActionPreference = "Stop"
@@ -14,7 +14,7 @@ if (Test-Path $publish) { Remove-Item -Recurse -Force $publish }
 dotnet publish (Join-Path $root "src\Shelf") -c Release -o $publish -p:SelfContained=true -p:Version=$Version -nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish 失敗" }
 
-& $iscc /Q "/DAppVersion=$Version" (Join-Path $PSScriptRoot "Shelf.iss")
+& $iscc /Q "/DAppVersion=$Version" (Join-Path $PSScriptRoot "Daizy.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup 編譯失敗" }
 
-Get-Item (Join-Path $root "artifacts\ShelfSetup-$Version.exe") | ForEach-Object { "安裝檔：$($_.FullName)（$([int]($_.Length / 1MB)) MB）" }
+Get-Item (Join-Path $root "artifacts\DaizySetup-$Version.exe") | ForEach-Object { "安裝檔：$($_.FullName)（$([int]($_.Length / 1MB)) MB）" }

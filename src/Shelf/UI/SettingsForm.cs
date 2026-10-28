@@ -17,7 +17,7 @@ sealed class SettingsForm : Form
     public SettingsForm(Settings settings, string usage)
     {
         _s = settings;
-        Text = "Shelf 設定";
+        Text = $"{Brand.Name} 設定";
         // 可以拉大拉小；內容放不下就捲動，卡片寬度跟著視窗
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = MinimizeBox = false;

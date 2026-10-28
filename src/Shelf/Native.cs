@@ -154,7 +154,7 @@ static class Native
     public static readonly IntPtr HWND_TOPMOST = new(-1);
 
     /// 第二個實例通知第一個實例「把視窗叫出來」
-    public static readonly int WM_SHELF_SHOW = RegisterWindowMessage("Shelf.Show");
+    public static readonly int WM_SHELF_SHOW = RegisterWindowMessage("Daizy.Show");
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 

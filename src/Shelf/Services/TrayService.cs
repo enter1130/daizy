@@ -19,17 +19,17 @@ sealed class TrayService : IDisposable
         MenuRenderer.Style(menu, showCheckMargin: true);
         menu.Items.Add(new ToolStripMenuItem());   // 空選單不會觸發 Opening，先放一個佔位
 
-        _icon = new NotifyIcon { Icon = _normalIcon, Text = "Shelf", ContextMenuStrip = menu, Visible = true };
+        _icon = new NotifyIcon { Icon = _normalIcon, Text = Brand.Name, ContextMenuStrip = menu, Visible = true };
         _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) toggle(); };
     }
 
     public void SetPaused(bool paused)
     {
         _icon.Icon = paused ? _pausedIcon : _normalIcon;
-        _icon.Text = paused ? "Shelf（暫停收集）" : "Shelf";
+        _icon.Text = paused ? $"{Brand.Name}（暫停收集）" : Brand.Name;
     }
 
-    public void Warn(string text) => _icon.ShowBalloonTip(5000, "Shelf", text, ToolTipIcon.Warning);
+    public void Warn(string text) => _icon.ShowBalloonTip(5000, Brand.Name, text, ToolTipIcon.Warning);
 
     public void Dispose()
     {

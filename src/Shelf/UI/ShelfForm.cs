@@ -53,7 +53,7 @@ sealed class ShelfForm : Form
 
     public ShelfForm()
     {
-        Text = "Shelf";
+        Text = Brand.Name;   // 第二個實例靠這個標題找到面板（Program.NotifyRunningInstance）
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
@@ -482,7 +482,7 @@ sealed class ShelfForm : Form
     {
         if (_settings.ReplaceWinV) return;   // 用 Win+V 時不另外註冊
         if (!_hotkey.Register(Handle, _settings.HotkeyModifiers, _settings.HotkeyKey))
-            _tray.Warn($"熱鍵 {HotkeyText} 已被其他程式佔用，請到設定換一組，或從系統匣圖示開啟 Shelf。");
+            _tray.Warn($"熱鍵 {HotkeyText} 已被其他程式佔用，請到設定換一組，或從系統匣圖示開啟 {Brand.Name}。");
     }
 
     void OpenSettings()
@@ -798,7 +798,7 @@ sealed class ShelfForm : Form
     {
         items.Clear();
         if (forTray)
-            items.Add(new ToolStripMenuItem("顯示 Shelf", null, (_, _) => Expand(keyboard: false, atBall: _bubble.Visible)) { ShortcutKeyDisplayString = HotkeyText });
+            items.Add(new ToolStripMenuItem($"顯示 {Brand.Name}", null, (_, _) => Expand(keyboard: false, atBall: _bubble.Visible)) { ShortcutKeyDisplayString = HotkeyText });
         items.Add(new ToolStripMenuItem("顯示浮動球", null, (_, _) =>
         {
             _settings.ShowBubble = !_settings.ShowBubble;
@@ -837,7 +837,7 @@ sealed class ShelfForm : Form
         _busy++;
         try
         {
-            if (ConfirmDialog.Ask("清空 Shelf？", $"將刪除 {n} 個未釘選的項目，釘選的項目會保留。", "清空"))
+            if (ConfirmDialog.Ask($"清空 {Brand.Name}？", $"將刪除 {n} 個未釘選的項目，釘選的項目會保留。", "清空"))
                 _store.ClearUnpinned();
         }
         finally

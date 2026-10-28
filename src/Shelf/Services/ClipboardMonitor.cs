@@ -6,7 +6,7 @@ namespace Shelf.Services;
 sealed class ClipboardMonitor
 {
     /// 程式自己寫入剪貼簿時附上的標記格式（F6）
-    public const string SelfFormat = "Shelf.Self";
+    public const string SelfFormat = "Daizy.Self";
 
     public bool Paused { get; set; }
 

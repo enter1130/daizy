@@ -6,8 +6,25 @@ namespace Shelf.Storage;
 /// 記憶體清單 + index.json。清單只在 UI 執行緒異動；存檔在計時器執行緒，以 _lock 保護。
 sealed class ShelfStore : IDisposable
 {
-    public static string Root { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Shelf");
+    static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+    public static string Root { get; } = Path.Combine(LocalAppData, Brand.Name);
+
+    /// 改名前存在 %LOCALAPPDATA%\Shelf：新資料夾還沒有的話整個搬過來（同一顆磁碟，搬移是改名，很快）
+    public static void MigrateLegacyFolder()
+    {
+        var legacy = Path.Combine(LocalAppData, Brand.LegacyName);
+        if (Directory.Exists(Root) || !Directory.Exists(legacy)) return;
+        try
+        {
+            Directory.Move(legacy, Root);
+        }
+        catch (IOException)
+        {
+            // 舊版還開著、檔案被鎖住：這次先用新的空資料夾，舊資料留在原處，下次啟動不會再搬（新資料夾已存在）。
+            // 安裝程式會先關掉舊版，正常不會走到這裡
+        }
+    }
 
     readonly string _indexPath = Path.Combine(Root, "index.json");
     readonly List<ShelfItem> _items;
