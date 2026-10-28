@@ -76,6 +76,22 @@
   @keyframes slideX{from{transform:scaleX(.15);opacity:0}to{transform:none;opacity:1}}
   @keyframes growY{from{transform:scaleY(.1);opacity:0}to{transform:none;opacity:1}}
 
+  /* ── 內容視窗樣式 B：柔和卡片（大圓角，配合膠囊分類列）── */
+  .soft .card.list{border-radius:22px;padding:8px 0}
+  .soft .row{border-radius:14px;margin:2px 8px;padding:8px 10px}
+  .soft .tile{border-radius:10px}
+
+  /* ── 內容視窗樣式 C：泡泡（每筆一顆獨立泡泡，像聊天訊息疊在球上方）── */
+  .bubbles .card.list{background:transparent;border:0;box-shadow:none;padding:0;overflow:visible;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}
+  .bubbles .row{margin:0;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:8px 12px 8px 8px;
+                box-shadow:0 4px 14px rgba(0,0,0,.16)}
+  .bubbles .row.hover{background:var(--panel);outline:2px solid var(--accent-soft)}
+  .bubbles .tile{border-radius:13px}
+  .top-anchor.bubbles .card.list, .bubbles .top-anchor .card.list{justify-content:flex-start}
+
+  .styles{display:flex;gap:6px;align-items:center;margin:0 0 6px}
+  .styles .btn.on{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+
   .spec{font-size:13px;width:100%;border-collapse:collapse;margin-top:8px}
   .spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--control-stroke);vertical-align:top}
   .spec th{color:var(--text2);font-weight:600}
@@ -98,6 +114,11 @@
   <div class="bar-btns">
     <button class="btn" onclick="replay()">▶ 重播展開動畫</button>
     <button class="btn" onclick="document.documentElement.classList.toggle('dark')">切換淺色 / 深色</button>
+  </div>
+  <div class="styles"><span style="color:var(--text2);font-size:13px">內容視窗樣式：</span>
+    <button class="btn" data-style="">A 現況（8 px 方盒）</button>
+    <button class="btn on" data-style="soft">B 柔和卡片</button>
+    <button class="btn" data-style="bubbles">C 泡泡</button>
   </div>
 
   <h2>球在三種位置</h2>
@@ -166,7 +187,7 @@
     const listY = bottom ? by - gap - listH : by + ball + gap;
     const originX = right ? 'right' : 'left', originY = bottom ? 'bottom' : 'top';
     return `
-      <div class="desk"><div class="w"></div><div class="tb"></div>
+      <div class="desk ${bottom ? '' : 'top-anchor'}"><div class="w"></div><div class="tb"></div>
         <div class="card list list-card" style="left:${listX}px;top:${listY}px;height:${listH}px;transform-origin:${originX} ${originY}">${rows(searching ? '驗收' : '')}</div>
         <div class="moon tabs-card" style="left:${moonX}px;top:${by}px;width:${bw}px;transform-origin:${right ? 'right' : 'left'} center">
           <svg class="shape" width="${bw}" height="${H}" style="${right ? '' : 'transform:scaleX(-1)'}"><path d="${moonPath(bw)}"/></svg>
@@ -185,6 +206,15 @@
     `<div><div class="cap">${cap}</div><div class="sub">${sub}</div><div class="play-target">${layout(c, false)}</div></div>`).join('');
   document.getElementById('search').innerHTML =
     `<div><div class="cap">搜尋中（球在右下）</div><div class="sub">輸入「驗收」，清單只剩兩筆，清單也跟著變矮。</div><div class="play-target">${layout('bottom-right', true)}</div></div>`;
+
+  // 內容視窗樣式切換：class 掛在 body，所有示意圖一起變。網址加 #bubbles / #soft / #plain 可直接指定（截圖用）
+  function setStyle(s) {
+    document.body.classList.remove('soft', 'bubbles');
+    if (s) document.body.classList.add(s);
+    document.querySelectorAll('.styles .btn').forEach(b => b.classList.toggle('on', b.dataset.style === s));
+  }
+  document.querySelectorAll('.styles .btn').forEach(b => b.onclick = () => { setStyle(b.dataset.style); replay(); });
+  setStyle({ '#plain': '', '#bubbles': 'bubbles' }[location.hash] ?? 'soft');
 
   function replay() {
     document.querySelectorAll('.play-target').forEach(el => { el.classList.remove('play'); void el.offsetWidth; el.classList.add('play'); });
