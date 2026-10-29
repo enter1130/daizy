@@ -10,9 +10,12 @@
     <RootNamespace>Shelf</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Shelf.ico</ApplicationIcon>
-    <Version>1.3.1</Version>
+    <Version>1.3.2</Version>
     <Product>Daizy</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 不變模式下 new CultureInfo(1033) 這類呼叫預設會丟例外；WinForms 切換輸入法等地方會用到。
+         設 false 讓它們照樣成功（行為等同不變文化特性），不必載入 ICU，記憶體不變 -->
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
     <!-- 省記憶體（開發文件 1.3）：不要背景 GC 執行緒；不要 PGO 收集的剖析資料 -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
