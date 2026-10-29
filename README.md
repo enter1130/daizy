@@ -1,8 +1,8 @@
 # Daizy
 
-剪貼簿暫存架：按 Win+V 叫出（取代 Windows 的剪貼簿紀錄），點一下就貼上；也收集拖入的檔案，可隨時拖出。閒置時只佔約 1 MB 記憶體。個人自用。
+剪貼簿暫存架：按 Win+V 叫出（取代 Windows 的剪貼簿紀錄），點一下就貼上；也收集拖入的檔案，可隨時拖出。閒置時只佔約 1 MB 記憶體。
 
-設計與實作細節見 [docs/開發文件.md](docs/開發文件.md)。
+設計與實作細節見 [docs/開發文件.md](docs/開發文件.md)，版本紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 安裝
 
@@ -51,4 +51,8 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version 1.3.0   # 
 - 以系統管理員身分執行的視窗（Windows 的 UIPI 限制）：無法拖放進 Daizy；點一下只會複製、不會自動貼上，要自己按 `Ctrl+V`。
 - 含 Win 鍵、且 Windows 自己已在用的組合（例如 `Win+S`），無法設為自訂熱鍵（`Win+V` 例外，用專門的方式取代）。
 - 注音 / 拼音輸入法開著時，搜尋框打的字先停在選字框，`Enter` 是確認選字。
-- 兩個螢幕縮放比例不同時，未特別處理（目前使用環境兩螢幕皆 150%）。
+- 兩個螢幕縮放比例不同時，未特別處理（只在兩螢幕同為 150% 的環境測過）。
+
+## 授權
+
+[MIT](LICENSE)
